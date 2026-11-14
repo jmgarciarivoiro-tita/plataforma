@@ -5,6 +5,7 @@ import { decodeJwt } from 'jose';
 import { z } from 'zod';
 import { enviarProblema } from '../http/problema.js';
 import type { EmisorJwt } from './emisor.js';
+import { rolesParaAudiencia, SIN_ROLES, type ProveedorRoles } from './roles.js';
 
 const consultaDiagnostico = z.object({
   aud: z
@@ -13,7 +14,7 @@ const consultaDiagnostico = z.object({
     .default(AUDIENCIA_PLATAFORMA),
 });
 
-export function registrarRutasJwt(app: FastifyInstance, o: { emisor: EmisorJwt; diagnostico: boolean }): void {
+export function registrarRutasJwt(app: FastifyInstance, o: { emisor: EmisorJwt; diagnostico: boolean; roles?: ProveedorRoles }): void {
   app.get('/.well-known/jwks.json', async (_req, reply) => {
     reply.header('cache-control', 'public, max-age=300');
     return o.emisor.jwks();
@@ -30,8 +31,13 @@ export function registrarRutasJwt(app: FastifyInstance, o: { emisor: EmisorJwt; 
     const aud = consulta.data.aud.startsWith('modulo:')
       ? audienciaModulo(consulta.data.aud.slice('modulo:'.length))
       : AUDIENCIA_PLATAFORMA;
-    // Roles y empresas vacíos hasta I1-3 (ProveedorRoles).
-    const token = await o.emisor.emitir({ usuario: req.usuario, audiencia: aud, roles: [], empresas: [] });
+    const r = o.roles ? await o.roles.obtenerRoles(req.usuario) : SIN_ROLES;
+    const token = await o.emisor.emitir({
+      usuario: req.usuario,
+      audiencia: aud,
+      roles: rolesParaAudiencia(r, aud),
+      empresas: r.empresas,
+    });
     return { claims: decodeJwt(token), token };
   });
 }

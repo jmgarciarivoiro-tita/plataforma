@@ -29,6 +29,10 @@ const esquema = z
     PLATFORM_ISSUER: z.url().default('http://localhost:8080'),
     PLATFORM_JWT_PRIVATE_JWK: opcional(z.string().min(1)),
     PLATFORM_JWT_PUBLIC_JWK_ANTERIOR: opcional(z.string().min(1)),
+
+    // Roles (I1-3). MVP: YAML local fuera del repo; Fase 1.5: Google Workspace.
+    ROLES_PROVEEDOR: z.enum(['yaml']).default('yaml'),
+    ROLES_YAML_PATH: z.string().min(1).default('../../infra/local/roles.local.yaml'),
   })
   .superRefine((c, ctx) => {
     if (c.OIDC_CLIENT_ID && (!c.OIDC_CLIENT_SECRET || !c.SESSION_SECRET)) {

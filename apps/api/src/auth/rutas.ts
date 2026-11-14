@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { enviarProblema } from '../http/problema.js';
 import type { ProveedorIdentidad } from './proveedor.js';
+import { SIN_ROLES, type ProveedorRoles } from './roles.js';
 import type { AlmacenSesiones, UsuarioSesion } from './sesiones.js';
 
 export const COOKIE_SESION = 'plat_sesion';
@@ -24,6 +25,7 @@ export interface OpcionesAuth {
   ttlSesionMin: number;
   cookiesSeguras: boolean;
   dominioRequerido?: string | undefined;
+  roles?: ProveedorRoles;
 }
 
 // Solo rutas relativas internas: evita redirecciones abiertas (//otro.sitio, /\otro, esquemas).
@@ -133,7 +135,8 @@ export function registrarRutasAuth(app: FastifyInstance, o: OpcionesAuth): void 
     sinCache(reply);
     if (!req.usuario) return enviarProblema(req, reply, 401, 'No autenticado');
     const { sub, email, nombre } = req.usuario;
-    return { sub, email, nombre };
+    const roles = o.roles ? await o.roles.obtenerRoles(req.usuario) : SIN_ROLES;
+    return { sub, email, nombre, roles };
   });
 
   // POST + cookie SameSite=Lax: un sitio externo no puede cerrar la sesión con un enlace.

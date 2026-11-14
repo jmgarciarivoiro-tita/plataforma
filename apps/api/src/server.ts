@@ -1,7 +1,10 @@
+import { resolve } from 'node:path';
+import type { FastifyBaseLogger } from 'fastify';
 // Punto de entrada: carga configuración, arranca y apaga ordenadamente (E9).
 import { construirApp } from './app.js';
 import { crearEmisorJwt } from './auth/emisor.js';
 import { crearProveedorOidc } from './auth/oidc.js';
+import { ProveedorRolesYaml } from './auth/roles.js';
 import { AlmacenSesionesMemoria } from './auth/sesiones.js';
 import { authHabilitada, cargarConfig } from './config.js';
 
@@ -24,7 +27,8 @@ const emisor = await crearEmisorJwt({
   jwkPrivada: config.PLATFORM_JWT_PRIVATE_JWK,
   jwkPublicaAnterior: config.PLATFORM_JWT_PUBLIC_JWK_ANTERIOR,
 });
-const app = construirApp({ config, emisor, ...(auth ? { auth } : {}) });
+const roles = (log: FastifyBaseLogger) => new ProveedorRolesYaml(resolve(config.ROLES_YAML_PATH), log);
+const app = construirApp({ config, emisor, roles, ...(auth ? { auth } : {}) });
 if (emisor.efimera) app.log.warn('JWT con clave efímera (solo local): los tokens dejan de valer al reiniciar');
 if (!auth) app.log.warn('login deshabilitado: falta OIDC_CLIENT_ID, OIDC_CLIENT_SECRET o SESSION_SECRET');
 

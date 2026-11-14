@@ -185,7 +185,12 @@ describe('sesión', () => {
     const { sesion } = await loginCompleto();
     const me = await app.inject({ method: 'GET', url: '/auth/me', cookies: { plat_sesion: sesion ?? '' } });
     expect(me.statusCode).toBe(200);
-    expect(me.json()).toEqual({ sub: 'google-123', email: 'ana@ejemplo.test', nombre: 'Ana Prueba' });
+    expect(me.json()).toEqual({
+      sub: 'google-123',
+      email: 'ana@ejemplo.test',
+      nombre: 'Ana Prueba',
+      roles: { plataforma: [], modulos: {}, empresas: [] },
+    });
   });
 
   it('una cookie de sesión sin firma válida no autentica', async () => {
