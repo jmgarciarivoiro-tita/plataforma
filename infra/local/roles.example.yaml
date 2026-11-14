@@ -1,0 +1,20 @@
+# Roles del MVP (I1-3). Copiar a infra/local/roles.local.yaml (Git lo ignora) y poner emails reales.
+# La API relee el archivo cuando cambia; si queda inválido, conserva la última versión válida.
+# Fase 1.5: estos datos salen de los grupos plat-* de Google Workspace (ADR-081).
+version: 1
+usuarios:
+  - email: admin@ejemplo.test            # el email verificado con el que entrás con Google
+    plataforma: [admin_plataforma, creador]
+    empresas: [corretaje, acopio, insumos]
+    modulos:
+      modulo-ejemplo: [operador]
+      contratos-granos: [administrador]
+
+  - email: operador@ejemplo.test
+    plataforma: [usuario]
+    empresas: [acopio]
+    modulos:
+      contratos-granos: [operador]
+
+# Roles de plataforma válidos: admin_plataforma, creador, revisor, auditor, usuario.
+# Roles de módulo: los que declare su manifiesto (modulo.yaml). Un email que no figura entra sin roles.

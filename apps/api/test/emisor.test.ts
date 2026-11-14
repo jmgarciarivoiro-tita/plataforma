@@ -7,6 +7,7 @@ import { crearEmisorJwt } from '../src/auth/emisor.js';
 import { AlmacenSesionesMemoria } from '../src/auth/sesiones.js';
 import type { ProveedorIdentidad } from '../src/auth/proveedor.js';
 import { cargarConfig } from '../src/config.js';
+import { parsearRoles, type ProveedorRoles } from '../src/auth/roles.js';
 
 const ISSUER = 'http://localhost:8080';
 const usuario = { sub: 'google-123', email: 'ana@ejemplo.test', nombre: 'Ana', dominio: null };
@@ -73,7 +74,18 @@ describe('rutas JWT', () => {
     completarLogin: async () => ({ sub: 'google-123', email: 'ana@ejemplo.test', emailVerificado: true, nombre: 'Ana', dominio: null }),
   };
 
-  async function crear(entorno: 'local' | 'staging') {
+  const mapa = parsearRoles(`
+version: 1
+usuarios:
+  - email: ana@ejemplo.test
+    plataforma: [creador]
+    empresas: [acopio]
+    modulos:
+      ejemplo: [operador]
+`);
+  const roles: ProveedorRoles = { obtenerRoles: async (u) => mapa.get(u.email ?? '') ?? { plataforma: [], modulos: {}, empresas: [] } };
+
+  async function crear(entorno: 'local' | 'staging', conRoles = false) {
     const emisor = await crearEmisorJwt({ issuer: ISSUER, jwkPrivada: await jwkPrivadaTexto() });
     const config = cargarConfig({
       NODE_ENV: 'test',
@@ -83,7 +95,12 @@ describe('rutas JWT', () => {
       SESSION_SECRET: 'x'.repeat(40),
       PLATFORM_JWT_PRIVATE_JWK: 'presente',
     });
-    app = construirApp({ config, emisor, auth: { proveedor, sesiones: new AlmacenSesionesMemoria({ ttlMs: 60_000 }) } });
+    app = construirApp({
+      config,
+      emisor,
+      ...(conRoles ? { roles: () => roles } : {}),
+      auth: { proveedor, sesiones: new AlmacenSesionesMemoria({ ttlMs: 60_000 }) },
+    });
     return emisor;
   }
 
@@ -121,6 +138,19 @@ describe('rutas JWT', () => {
     expect(malo.statusCode).toBe(400);
     const plat = await app.inject({ method: 'GET', url: '/auth/token-diagnostico', cookies: { plat_sesion: cookie } });
     expect((plat.json() as { claims: { aud: string } }).claims.aud).toBe('plataforma');
+  });
+
+  it('el token lleva los roles del módulo de su audiencia y las empresas del usuario', async () => {
+    await crear('local', true);
+    const cookie = await sesion();
+    const mod = await app.inject({ method: 'GET', url: '/auth/token-diagnostico?aud=modulo:ejemplo', cookies: { plat_sesion: cookie } });
+    expect((mod.json() as { claims: object }).claims).toMatchObject({ roles: ['operador'], empresas: ['acopio'] });
+    const otro = await app.inject({ method: 'GET', url: '/auth/token-diagnostico?aud=modulo:otro', cookies: { plat_sesion: cookie } });
+    expect((otro.json() as { claims: object }).claims).toMatchObject({ roles: [], empresas: ['acopio'] });
+    const plat = await app.inject({ method: 'GET', url: '/auth/token-diagnostico', cookies: { plat_sesion: cookie } });
+    expect((plat.json() as { claims: object }).claims).toMatchObject({ roles: ['creador'] });
+    const me = await app.inject({ method: 'GET', url: '/auth/me', cookies: { plat_sesion: cookie } });
+    expect(me.json()).toMatchObject({ roles: { plataforma: ['creador'], modulos: { ejemplo: ['operador'] }, empresas: ['acopio'] } });
   });
 
   it('el diagnóstico no existe fuera de ENTORNO=local', async () => {

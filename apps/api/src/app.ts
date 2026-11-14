@@ -1,11 +1,12 @@
 // Construcción de la app Fastify, separada del arranque para poder testearla con inject().
 import { randomUUID } from 'node:crypto';
 import cookie from '@fastify/cookie';
-import Fastify, { LogController, type FastifyInstance } from 'fastify';
+import Fastify, { LogController, type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import type { EmisorJwt } from './auth/emisor.js';
 import { registrarRutasAuth, registrarAuthDeshabilitada } from './auth/rutas.js';
 import { registrarRutasJwt } from './auth/rutas-jwt.js';
 import type { ProveedorIdentidad } from './auth/proveedor.js';
+import type { ProveedorRoles } from './auth/roles.js';
 import type { AlmacenSesiones } from './auth/sesiones.js';
 import { authHabilitada, cookiesSeguras, type Config } from './config.js';
 import { enviarProblema } from './http/problema.js';
@@ -21,9 +22,11 @@ export interface OpcionesApp {
   auth?: { proveedor: ProveedorIdentidad; sesiones: AlmacenSesiones };
   /** Emisor del JWT de plataforma: publica /.well-known/jwks.json. */
   emisor?: EmisorJwt;
+  /** Roles de los usuarios (o una fábrica que recibe el logger). Sin proveedor, nadie tiene roles. */
+  roles?: ProveedorRoles | ((log: FastifyBaseLogger) => ProveedorRoles);
 }
 
-export function construirApp({ config, chequeos = [], auth, emisor }: OpcionesApp): FastifyInstance {
+export function construirApp({ config, chequeos = [], auth, emisor, roles: rolesOFabrica }: OpcionesApp): FastifyInstance {
   const app = Fastify({
     logger: {
       level: config.NODE_ENV === 'test' ? 'silent' : config.LOG_LEVEL,
@@ -39,6 +42,9 @@ export function construirApp({ config, chequeos = [], auth, emisor }: OpcionesAp
       return typeof recibido === 'string' && FORMATO_CORRELACION.test(recibido) ? recibido : randomUUID();
     },
   });
+
+  // Un YAML de roles inválido lanza acá y la API no arranca (mejor que entrar sin control).
+  const roles = typeof rolesOFabrica === 'function' ? rolesOFabrica(app.log) : rolesOFabrica;
 
   app.addHook('onSend', async (req, reply) => {
     reply.header(HEADER_CORRELACION, req.id);
@@ -68,6 +74,7 @@ export function construirApp({ config, chequeos = [], auth, emisor }: OpcionesAp
     app.after(() =>
       registrarRutasAuth(app, {
         ...auth,
+        ...(roles ? { roles } : {}),
         urlPublica: config.PLATFORM_URL_PUBLICA,
         ttlSesionMin: config.SESSION_TTL_MIN,
         cookiesSeguras: cookiesSeguras(config),
@@ -78,7 +85,7 @@ export function construirApp({ config, chequeos = [], auth, emisor }: OpcionesAp
     registrarAuthDeshabilitada(app);
   }
 
-  if (emisor) app.after(() => registrarRutasJwt(app, { emisor, diagnostico: config.ENTORNO === 'local' }));
+  if (emisor) app.after(() => registrarRutasJwt(app, { emisor, diagnostico: config.ENTORNO === 'local', ...(roles ? { roles } : {}) }));
 
   registrarRutasSistema(app, config, chequeos);
   return app;

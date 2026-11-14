@@ -71,6 +71,13 @@ const verificar = crearVerificador({ jwksUrl: process.env.PLATFORM_JWKS_URL!, is
 const claims = await verificar(tokenDeHeader(req.headers.authorization) ?? '');
 ```
 
+## Roles (I1-3)
+
+1. `Copy-Item infra\local\roles.example.yaml infra\local\roles.local.yaml` (Git lo ignora).
+2. Poner tu email de Google y los roles. La API relee el archivo al guardarlo; si queda inválido,
+   mantiene la versión anterior y lo registra en el log. Si es inválido al arrancar, la API no inicia.
+3. `GET /auth/me` muestra tus roles; el JWT lleva los roles del módulo de su `aud` y tus empresas.
+
 ## Configuración de GitHub (una vez)
 
 1. **Ruleset de `main`:** Settings → Rules → Rulesets → *Import a ruleset* → `github/rulesets/main-plataforma.json`.
