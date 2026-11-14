@@ -36,6 +36,21 @@ curl http://127.0.0.1:8080/health
 | `GET /ready` | Dependencias listas (503 si alguna falla) |
 | `GET /meta` | Versión, commit, digest y entorno |
 
+## Login con Google (I1-1)
+
+1. Completar en `infra/local/.env`: `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` y `SESSION_SECRET` (ver `.env.example`).
+2. En Google Cloud, el URI de redirección autorizado debe ser `http://localhost:8080/auth/callback`.
+3. `pnpm dev` y abrir `http://localhost:8080/auth/login?returnTo=/auth/me`.
+
+| Endpoint | Qué hace |
+|---|---|
+| `GET /auth/login?returnTo=/ruta` | Redirige a Google (PKCE + state + nonce) |
+| `GET /auth/callback` | Valida el login, crea la sesión y vuelve a `returnTo` |
+| `GET /auth/me` | Usuario de la sesión (401 sin sesión) |
+| `POST /auth/logout` | Cierra la sesión |
+
+Sin `OIDC_CLIENT_ID` el login queda deshabilitado (`/auth/*` responde 503) y el resto de la API funciona.
+
 ## Configuración de GitHub (una vez)
 
 1. **Ruleset de `main`:** Settings → Rules → Rulesets → *Import a ruleset* → `github/rulesets/main-plataforma.json`.

@@ -108,3 +108,20 @@ describe('configuración (P1)', () => {
     expect(cargarConfig({})).toMatchObject({ PORT: 3000, ENTORNO: 'local' });
   });
 });
+
+describe('configuración de identidad', () => {
+  it('exige secreto de cliente y de sesión si hay OIDC_CLIENT_ID', () => {
+    expect(() => cargarConfig({ OIDC_CLIENT_ID: 'x' })).toThrow(/OIDC_CLIENT_SECRET y SESSION_SECRET/);
+  });
+
+  it('rechaza un SESSION_SECRET corto', () => {
+    expect(() => cargarConfig({ SESSION_SECRET: 'corto' })).toThrow(/32 caracteres/);
+  });
+
+  it('trata las variables vacías del .env como no definidas', () => {
+    expect(cargarConfig({ OIDC_CLIENT_ID: '', OIDC_DOMINIO_REQUERIDO: '' })).toMatchObject({
+      OIDC_CLIENT_ID: undefined,
+      OIDC_DOMINIO_REQUERIDO: undefined,
+    });
+  });
+});
