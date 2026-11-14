@@ -46,3 +46,5 @@ curl http://127.0.0.1:8080/health
 
 Ver `AGENTS.md` (aplica a personas y a agentes de IA). Una historia por PR, tests primero,
 `pnpm verify` en verde y aprobación de Sistemas.
+
+<!-- prueba de controles I0 -->
