@@ -3,3 +3,7 @@ packages:
   - "packages/*"
 allowBuilds:
   esbuild: true
+overrides:
+  # Advisory de minimatch (DoS por amplificación de globparts), corregido en 11.0.1.
+  # typescript-eslint todavía pide ^10; quitar cuando suba a ^11.
+  minimatch: 11.0.8
