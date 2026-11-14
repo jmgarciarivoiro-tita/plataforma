@@ -1,9 +1,25 @@
 // Punto de entrada: carga configuración, arranca y apaga ordenadamente (E9).
 import { construirApp } from './app.js';
-import { cargarConfig } from './config.js';
+import { crearProveedorOidc } from './auth/oidc.js';
+import { AlmacenSesionesMemoria } from './auth/sesiones.js';
+import { authHabilitada, cargarConfig } from './config.js';
 
 const config = cargarConfig();
-const app = construirApp({ config });
+const auth =
+  authHabilitada(config) && config.OIDC_CLIENT_ID && config.OIDC_CLIENT_SECRET
+    ? {
+        proveedor: crearProveedorOidc({
+          issuer: config.OIDC_ISSUER,
+          clientId: config.OIDC_CLIENT_ID,
+          clientSecret: config.OIDC_CLIENT_SECRET,
+          redirectUri: new URL('/auth/callback', config.PLATFORM_URL_PUBLICA).toString(),
+          dominioSugerido: config.OIDC_DOMINIO_REQUERIDO,
+        }),
+        sesiones: new AlmacenSesionesMemoria({ ttlMs: config.SESSION_TTL_MIN * 60_000 }),
+      }
+    : undefined;
+const app = construirApp({ config, ...(auth ? { auth } : {}) });
+if (!auth) app.log.warn('login deshabilitado: falta OIDC_CLIENT_ID, OIDC_CLIENT_SECRET o SESSION_SECRET');
 
 let cerrando = false;
 async function apagar(senal: string): Promise<void> {

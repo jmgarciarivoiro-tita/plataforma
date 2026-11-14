@@ -1,7 +1,12 @@
 // Construcción de la app Fastify, separada del arranque para poder testearla con inject().
 import { randomUUID } from 'node:crypto';
+import cookie from '@fastify/cookie';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
-import type { Config } from './config.js';
+import { registrarAuthDeshabilitada, registrarRutasAuth } from './auth/rutas.js';
+import type { ProveedorIdentidad } from './auth/proveedor.js';
+import type { AlmacenSesiones } from './auth/sesiones.js';
+import { authHabilitada, cookiesSeguras, type Config } from './config.js';
+import { enviarProblema } from './http/problema.js';
 import { registrarRutasSistema, type ChequeoListo } from './sistema/rutas.js';
 
 const HEADER_CORRELACION = 'x-correlation-id';
@@ -10,9 +15,11 @@ const FORMATO_CORRELACION = /^[A-Za-z0-9._-]{8,128}$/;
 export interface OpcionesApp {
   config: Config;
   chequeos?: ChequeoListo[];
+  /** Dependencias del login. Si faltan o la config no lo habilita, /auth/* responde 503. */
+  auth?: { proveedor: ProveedorIdentidad; sesiones: AlmacenSesiones };
 }
 
-export function construirApp({ config, chequeos = [] }: OpcionesApp): FastifyInstance {
+export function construirApp({ config, chequeos = [], auth }: OpcionesApp): FastifyInstance {
   const app = Fastify({
     logger: {
       level: config.NODE_ENV === 'test' ? 'silent' : config.LOG_LEVEL,
@@ -50,14 +57,22 @@ export function construirApp({ config, chequeos = [] }: OpcionesApp): FastifyIns
       });
   });
 
-  app.setNotFoundHandler((req, reply) =>
-    reply.code(404).type('application/problem+json').send({
-      type: 'about:blank',
-      title: 'No encontrado',
-      status: 404,
-      correlationId: req.id,
-    }),
-  );
+  app.setNotFoundHandler((req, reply) => enviarProblema(req, reply, 404, 'No encontrado'));
+
+  if (auth && authHabilitada(config) && config.SESSION_SECRET) {
+    app.register(cookie, { secret: config.SESSION_SECRET });
+    app.after(() =>
+      registrarRutasAuth(app, {
+        ...auth,
+        urlPublica: config.PLATFORM_URL_PUBLICA,
+        ttlSesionMin: config.SESSION_TTL_MIN,
+        cookiesSeguras: cookiesSeguras(config),
+        dominioRequerido: config.OIDC_DOMINIO_REQUERIDO,
+      }),
+    );
+  } else {
+    registrarAuthDeshabilitada(app);
+  }
 
   registrarRutasSistema(app, config, chequeos);
   return app;

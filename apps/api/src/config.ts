@@ -1,17 +1,39 @@
 // P1: toda la configuración llega por variables de entorno y se valida al arrancar.
 import { z } from 'zod';
 
-const esquema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-  HOST: z.string().default('0.0.0.0'),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  ENTORNO: z.enum(['local', 'staging', 'production']).default('local'),
-  // Datos de /meta: los inyecta el pipeline al construir la imagen (P5).
-  APP_VERSION: z.string().default('0.0.0-dev'),
-  APP_COMMIT: z.string().default('desconocido'),
-  APP_DIGEST: z.string().default('desconocido'),
-});
+const vacioComoIndefinido = (v: unknown): unknown => (v === '' ? undefined : v);
+const opcional = <T extends z.ZodType>(s: T) => z.preprocess(vacioComoIndefinido, s.optional());
+
+const esquema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+    HOST: z.string().default('0.0.0.0'),
+    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+    ENTORNO: z.enum(['local', 'staging', 'production']).default('local'),
+    // Datos de /meta: los inyecta el pipeline al construir la imagen (P5).
+    APP_VERSION: z.string().default('0.0.0-dev'),
+    APP_COMMIT: z.string().default('desconocido'),
+    APP_DIGEST: z.string().default('desconocido'),
+
+    // Identidad (I1-1). Si falta OIDC_CLIENT_ID, el login queda deshabilitado (503).
+    PLATFORM_URL_PUBLICA: z.url().default('http://localhost:8080'),
+    OIDC_ISSUER: z.url().default('https://accounts.google.com'),
+    OIDC_CLIENT_ID: opcional(z.string().min(1)),
+    OIDC_CLIENT_SECRET: opcional(z.string().min(1)),
+    OIDC_DOMINIO_REQUERIDO: opcional(z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/i, 'dominio inválido')),
+    SESSION_SECRET: opcional(z.string().min(32, 'debe tener al menos 32 caracteres')),
+    SESSION_TTL_MIN: z.coerce.number().int().min(5).max(1440).default(480),
+  })
+  .superRefine((c, ctx) => {
+    if (c.OIDC_CLIENT_ID && (!c.OIDC_CLIENT_SECRET || !c.SESSION_SECRET)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['OIDC_CLIENT_ID'],
+        message: 'con OIDC_CLIENT_ID también son obligatorios OIDC_CLIENT_SECRET y SESSION_SECRET',
+      });
+    }
+  });
 
 export type Config = z.infer<typeof esquema>;
 
@@ -22,4 +44,14 @@ export function cargarConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error(`Configuración inválida: ${detalle}`);
   }
   return resultado.data;
+}
+
+/** true si el login está configurado (cliente OIDC + secreto de sesión). */
+export function authHabilitada(c: Config): boolean {
+  return Boolean(c.OIDC_CLIENT_ID && c.OIDC_CLIENT_SECRET && c.SESSION_SECRET);
+}
+
+/** Cookies con atributo Secure salvo en http://localhost. */
+export function cookiesSeguras(c: Config): boolean {
+  return !c.PLATFORM_URL_PUBLICA.startsWith('http://localhost') && !c.PLATFORM_URL_PUBLICA.startsWith('http://127.0.0.1');
 }
