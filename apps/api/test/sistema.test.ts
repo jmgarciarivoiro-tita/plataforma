@@ -125,3 +125,10 @@ describe('configuración de identidad', () => {
     });
   });
 });
+
+describe('configuración del JWT', () => {
+  it('exige clave privada fuera de local', () => {
+    expect(() => cargarConfig({ ENTORNO: 'staging' })).toThrow(/PLATFORM_JWT_PRIVATE_JWK/);
+    expect(cargarConfig({ ENTORNO: 'staging', PLATFORM_JWT_PRIVATE_JWK: '{}' }).ENTORNO).toBe('staging');
+  });
+});

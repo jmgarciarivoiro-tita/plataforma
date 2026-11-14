@@ -7,7 +7,7 @@ WORKDIR /repo
 FROM base AS build
 COPY . .
 RUN pnpm install --frozen-lockfile \
- && pnpm --filter @plataforma/api build \
+ && pnpm --filter "@plataforma/api..." build \
  && pnpm --filter @plataforma/api deploy --prod /out
 
 FROM node:26-alpine AS runtime

@@ -2,7 +2,9 @@
 import { randomUUID } from 'node:crypto';
 import cookie from '@fastify/cookie';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
-import { registrarAuthDeshabilitada, registrarRutasAuth } from './auth/rutas.js';
+import type { EmisorJwt } from './auth/emisor.js';
+import { registrarRutasAuth, registrarAuthDeshabilitada } from './auth/rutas.js';
+import { registrarRutasJwt } from './auth/rutas-jwt.js';
 import type { ProveedorIdentidad } from './auth/proveedor.js';
 import type { AlmacenSesiones } from './auth/sesiones.js';
 import { authHabilitada, cookiesSeguras, type Config } from './config.js';
@@ -17,9 +19,11 @@ export interface OpcionesApp {
   chequeos?: ChequeoListo[];
   /** Dependencias del login. Si faltan o la config no lo habilita, /auth/* responde 503. */
   auth?: { proveedor: ProveedorIdentidad; sesiones: AlmacenSesiones };
+  /** Emisor del JWT de plataforma: publica /.well-known/jwks.json. */
+  emisor?: EmisorJwt;
 }
 
-export function construirApp({ config, chequeos = [], auth }: OpcionesApp): FastifyInstance {
+export function construirApp({ config, chequeos = [], auth, emisor }: OpcionesApp): FastifyInstance {
   const app = Fastify({
     logger: {
       level: config.NODE_ENV === 'test' ? 'silent' : config.LOG_LEVEL,
@@ -73,6 +77,8 @@ export function construirApp({ config, chequeos = [], auth }: OpcionesApp): Fast
   } else {
     registrarAuthDeshabilitada(app);
   }
+
+  if (emisor) app.after(() => registrarRutasJwt(app, { emisor, diagnostico: config.ENTORNO === 'local' }));
 
   registrarRutasSistema(app, config, chequeos);
   return app;
