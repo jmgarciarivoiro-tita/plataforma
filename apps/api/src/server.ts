@@ -1,5 +1,6 @@
 // Punto de entrada: carga configuración, arranca y apaga ordenadamente (E9).
 import { construirApp } from './app.js';
+import { crearEmisorJwt } from './auth/emisor.js';
 import { crearProveedorOidc } from './auth/oidc.js';
 import { AlmacenSesionesMemoria } from './auth/sesiones.js';
 import { authHabilitada, cargarConfig } from './config.js';
@@ -18,7 +19,13 @@ const auth =
         sesiones: new AlmacenSesionesMemoria({ ttlMs: config.SESSION_TTL_MIN * 60_000 }),
       }
     : undefined;
-const app = construirApp({ config, ...(auth ? { auth } : {}) });
+const emisor = await crearEmisorJwt({
+  issuer: config.PLATFORM_ISSUER,
+  jwkPrivada: config.PLATFORM_JWT_PRIVATE_JWK,
+  jwkPublicaAnterior: config.PLATFORM_JWT_PUBLIC_JWK_ANTERIOR,
+});
+const app = construirApp({ config, emisor, ...(auth ? { auth } : {}) });
+if (emisor.efimera) app.log.warn('JWT con clave efímera (solo local): los tokens dejan de valer al reiniciar');
 if (!auth) app.log.warn('login deshabilitado: falta OIDC_CLIENT_ID, OIDC_CLIENT_SECRET o SESSION_SECRET');
 
 let cerrando = false;

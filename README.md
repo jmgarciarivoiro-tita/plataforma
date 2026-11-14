@@ -8,13 +8,14 @@ los usan integrados en un único Shell.
 
 ## Requisitos
 
-- Node.js 26 LTS (`.nvmrc`) y Corepack (`corepack enable`)
+- Node.js 26 LTS (`.nvmrc`)
+- pnpm vía Corepack. Desde Node 25 Corepack no viene incluido; en una consola de administrador:
+  `npm install -g corepack@latest` y `corepack enable pnpm`
 - Docker con Docker Compose
 
 ## Inicio rápido
 
 ```bash
-corepack enable
 pnpm install
 pnpm verify                      # lint + tipos + tests + build
 pnpm dev                         # API en http://localhost:3000/health
@@ -50,6 +51,25 @@ curl http://127.0.0.1:8080/health
 | `POST /auth/logout` | Cierra la sesión |
 
 Sin `OIDC_CLIENT_ID` el login queda deshabilitado (`/auth/*` responde 503) y el resto de la API funciona.
+
+> **Al actualizar:** compará tu `infra/local/.env` con `.env.example`; las variables nuevas
+> no se agregan solas.
+
+## JWT de plataforma (I1-2)
+
+La API firma tokens ES256 de 5 minutos con `aud` por módulo (`modulo:<id>`) o `plataforma`.
+Los módulos los verifican con `@plataforma/auth` contra `GET /.well-known/jwks.json`.
+
+| Endpoint | Qué hace |
+|---|---|
+| `GET /.well-known/jwks.json` | Claves públicas (vigente y, en rotación, la anterior) |
+| `GET /auth/token-diagnostico?aud=modulo:<id>` | **Solo `ENTORNO=local`.** Token y claims para el usuario logueado |
+
+```ts
+import { crearVerificador, tokenDeHeader } from '@plataforma/auth';
+const verificar = crearVerificador({ jwksUrl: process.env.PLATFORM_JWKS_URL!, issuer: process.env.PLATFORM_ISSUER!, audiencia: 'modulo:<id>' });
+const claims = await verificar(tokenDeHeader(req.headers.authorization) ?? '');
+```
 
 ## Configuración de GitHub (una vez)
 

@@ -12,10 +12,12 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --coverage",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "generar-clave-jwt": "tsx scripts/generar-clave-jwt.ts"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.5",
+    "@plataforma/auth": "workspace:*",
     "fastify": "5.12.8",
     "jose": "6.2.17",
     "openid-client": "6.9.0",

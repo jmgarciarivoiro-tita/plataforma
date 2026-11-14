@@ -24,6 +24,11 @@ const esquema = z
     OIDC_DOMINIO_REQUERIDO: opcional(z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/i, 'dominio inválido')),
     SESSION_SECRET: opcional(z.string().min(32, 'debe tener al menos 32 caracteres')),
     SESSION_TTL_MIN: z.coerce.number().int().min(5).max(1440).default(480),
+
+    // JWT de plataforma (I1-2). Sin clave privada se usa una efímera (solo ENTORNO=local).
+    PLATFORM_ISSUER: z.url().default('http://localhost:8080'),
+    PLATFORM_JWT_PRIVATE_JWK: opcional(z.string().min(1)),
+    PLATFORM_JWT_PUBLIC_JWK_ANTERIOR: opcional(z.string().min(1)),
   })
   .superRefine((c, ctx) => {
     if (c.OIDC_CLIENT_ID && (!c.OIDC_CLIENT_SECRET || !c.SESSION_SECRET)) {
@@ -31,6 +36,13 @@ const esquema = z
         code: 'custom',
         path: ['OIDC_CLIENT_ID'],
         message: 'con OIDC_CLIENT_ID también son obligatorios OIDC_CLIENT_SECRET y SESSION_SECRET',
+      });
+    }
+    if (c.ENTORNO !== 'local' && !c.PLATFORM_JWT_PRIVATE_JWK) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['PLATFORM_JWT_PRIVATE_JWK'],
+        message: 'obligatoria fuera de ENTORNO=local (una clave efímera invalidaría los tokens al reiniciar)',
       });
     }
   });
