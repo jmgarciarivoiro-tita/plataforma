@@ -1,0 +1,42 @@
+# Entorno local del MVP (I0). Uso:
+#   cp infra/local/.env.example infra/local/.env   # completar valores
+#   docker compose -f infra/local/docker-compose.yml up --build
+name: plataforma
+
+services:
+  postgres-dev:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: plataforma
+      POSTGRES_PASSWORD: ${PG_DEV_PASSWORD:?definir PG_DEV_PASSWORD en .env}
+      POSTGRES_DB: plataforma
+    volumes:
+      - pgdev:/var/lib/postgresql
+    networks: [interna]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plataforma"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    env_file: .env
+    environment:
+      PORT: "3000"
+      ENTORNO: local
+    ports:
+      - "127.0.0.1:8080:3000"   # solo localhost; la exposición es Cloudflare (I7)
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+    networks: [interna, salida]
+
+networks:
+  interna:
+    internal: true            # sin salida a internet (E11)
+  salida: {}
+
+volumes:
+  pgdev: {}

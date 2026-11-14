@@ -1,0 +1,7 @@
+# Sistemas aprueba todo cambio (ADR-085).
+# MVP: cuenta "Revisor simulado – MVP" (ADR-064). Sin emails (P7).
+# Corporativo: @<org>/sistemas y @<org>/seguridad.
+*                     @jmgarciarivoiro1-ops
+/.github/             @jmgarciarivoiro1-ops
+/policies/            @jmgarciarivoiro1-ops
+/registry/            @jmgarciarivoiro1-ops

@@ -1,0 +1,13 @@
+{
+  "name": "@plataforma/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": ["tsconfig.base.json"],
+  "exports": { "./tsconfig.base.json": "./tsconfig.base.json" },
+  "scripts": {
+    "build": "echo sin build",
+    "typecheck": "echo sin typecheck",
+    "test": "echo sin tests"
+  }
+}
