@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cargarRegistry } from '../src/registry/registry.js';
+import { cargarRegistry } from '../src/index.js';
 
 const base = `id: mod-a
 nombre: Módulo A
@@ -10,7 +10,7 @@ objetivo: Probar el registry.
 area: Sistemas
 empresas: [acopio]
 duenos: { product_owner: po-a, responsable_tecnico: rt-a }
-repo: modulo-a
+repo: modulo-mod-a
 plantilla: plantilla-modulo@0.1.0
 estado: en_desarrollo
 riesgo: bajo
@@ -37,6 +37,11 @@ describe('cargarRegistry', () => {
     expect(cargarRegistry(join(dir, 'no-existe'))).toEqual([]);
   });
 
+  it('acepta "plataforma" como repo de un módulo de referencia', () => {
+    writeFileSync(join(dir, 'mod-a.yaml'), base.replace('repo: modulo-mod-a', 'repo: plataforma'));
+    expect(cargarRegistry(dir)[0]?.repo).toBe('plataforma');
+  });
+
   it('carga un módulo válido', () => {
     writeFileSync(join(dir, 'mod-a.yaml'), base);
     expect(cargarRegistry(dir)[0]).toMatchObject({ id: 'mod-a', riesgo: 'bajo' });
@@ -45,9 +50,11 @@ describe('cargarRegistry', () => {
   it.each([
     ['id distinto del archivo', 'otro.yaml', base],
     ['email en un campo', 'mod-a.yaml', base.replace('po-a', 'po@empresa.test')],
-    ['URL en un campo', 'mod-a.yaml', base.replace('repo: modulo-a', 'repo: https://github.com/x/y')],
+    ['URL en un campo', 'mod-a.yaml', base.replace('repo: modulo-mod-a', 'repo: https://github.com/x/y')],
     ['clave desconocida', 'mod-a.yaml', `${base}extra: 1\n`],
     ['datos personales con riesgo bajo', 'mod-a.yaml', base.replace('datos_personales: false', 'datos_personales: true')],
+    ['repo con otro nombre', 'mod-a.yaml', base.replace('repo: modulo-mod-a', 'repo: modulo-otro')],
+    ['plantilla con otro formato', 'mod-a.yaml', base.replace('plantilla-modulo@0.1.0', 'otra@1')],
     [
       'riesgo alto con PO = responsable técnico',
       'mod-a.yaml',

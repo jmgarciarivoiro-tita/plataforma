@@ -1,0 +1,28 @@
+{
+  "name": "@plataforma/aprovisionador",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Aprovisionamiento de repos de módulos desde el registry (I2-3). Corre solo en GitHub Actions.",
+  "main": "dist/cli.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --coverage",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@plataforma/contracts": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@plataforma/config": "workspace:*",
+    "@types/node": "26.6.6",
+    "@vitest/coverage-v8": "5.1.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

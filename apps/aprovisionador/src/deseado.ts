@@ -1,0 +1,92 @@
+// Configuración deseada de un repo de módulo según su perfil de riesgo (ADR-085, docs/07 §4).
+// Funciones puras: lo que se aplica se decide acá y se testea sin red.
+import type { ModuloRegistry } from '@plataforma/contracts';
+
+export const NOMBRE_RULESET = 'main-modulo';
+export const RAMA_INICIAL = 'aprovisionamiento/inicial';
+
+/** Aprobaciones de code owner exigidas por riesgo. Riesgo alto exige dos personas distintas. */
+export function aprobacionesRequeridas(riesgo: ModuloRegistry['riesgo']): number {
+  return riesgo === 'alto' ? 2 : 1;
+}
+
+export function rulesetDeseado(riesgo: ModuloRegistry['riesgo']) {
+  return {
+    name: NOMBRE_RULESET,
+    target: 'branch',
+    enforcement: 'active',
+    conditions: { ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] } },
+    bypass_actors: [],
+    rules: [
+      { type: 'deletion' },
+      { type: 'non_fast_forward' },
+      { type: 'required_linear_history' },
+      {
+        type: 'pull_request',
+        parameters: {
+          required_approving_review_count: aprobacionesRequeridas(riesgo),
+          dismiss_stale_reviews_on_push: true,
+          require_code_owner_review: true,
+          require_last_push_approval: true,
+          required_review_thread_resolution: true,
+          allowed_merge_methods: ['squash'],
+        },
+      },
+      {
+        type: 'required_status_checks',
+        parameters: { strict_required_status_checks_policy: true, required_status_checks: [{ context: 'resumen' }] },
+      },
+    ],
+  };
+}
+
+export function ajustesRepoDeseados(m: ModuloRegistry) {
+  return {
+    description: `${m.nombre} — módulo de la plataforma (MVP, datos sintéticos)`,
+    has_wiki: false,
+    has_projects: false,
+    allow_squash_merge: true,
+    allow_merge_commit: false,
+    allow_rebase_merge: false,
+    allow_auto_merge: true,
+    delete_branch_on_merge: true,
+    security_and_analysis: {
+      secret_scanning: { status: 'enabled' },
+      secret_scanning_push_protection: { status: 'enabled' },
+    },
+  };
+}
+
+export type Revisor = { tipo: 'Team'; slug: string } | { tipo: 'User'; login: string };
+
+export interface AmbienteDeseado {
+  nombre: string;
+  revisores: Revisor[];
+  /** Quien dispara el despliegue no puede aprobarlo (segregación de funciones). */
+  prevenirAutoAprobacion: boolean;
+}
+
+/**
+ * staging sin aprobación; production aprobado por Sistemas, nunca por quien despliega.
+ * Riesgo medio o alto: además aceptación del negocio por el Product Owner antes de producción (doc 10).
+ */
+export function ambientesDeseados(m: ModuloRegistry, teamRevisores: string): AmbienteDeseado[] {
+  const ambientes: AmbienteDeseado[] = [{ nombre: 'staging', revisores: [], prevenirAutoAprobacion: false }];
+  if (m.riesgo !== 'bajo') {
+    ambientes.push({ nombre: 'aceptacion-negocio', revisores: [{ tipo: 'User', login: m.duenos.product_owner }], prevenirAutoAprobacion: false });
+  }
+  ambientes.push({ nombre: 'production', revisores: [{ tipo: 'Team', slug: teamRevisores }], prevenirAutoAprobacion: true });
+  return ambientes;
+}
+
+/** Módulos que el aprovisionador administra: con repo propio y no retirados. */
+export function debeAprovisionarse(m: ModuloRegistry): boolean {
+  return m.repo !== 'plataforma' && m.estado !== 'retirado';
+}
+
+/** "plantilla-modulo@0.1.0" → tag "v0.1.0" del repo de la plantilla. */
+export function tagDePlantilla(plantilla: string, repoPlantilla: string): string {
+  const m = /^([a-z0-9-]+)@(\d+\.\d+\.\d+)$/.exec(plantilla);
+  if (!m || m[1] !== repoPlantilla) throw new Error(`plantilla no soportada: ${plantilla} (se espera ${repoPlantilla}@x.y.z)`);
+  return `v${m[2]}`;
+}

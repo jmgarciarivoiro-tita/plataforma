@@ -104,6 +104,19 @@ en el gateway y en los que el usuario tiene algún rol; cada módulo se abre den
 - Un `registry/<id>.yaml` inválido impide arrancar la API (se valida con Zod: sin emails ni URLs,
   PO ≠ responsable técnico en riesgo alto o SOX, datos personales ⇒ riesgo ≥ medio).
 
+## Aprovisionamiento de módulos (I2-3)
+
+Dar de alta un módulo es un PR que agrega `registry/<id>.yaml` con `repo: modulo-<id>`. Al mergearlo,
+el workflow `aprovisionamiento` (ADR 0008):
+
+1. crea `modulo-<id>` en la org (público, datos sintéticos) y da *Write* al team `sistemas`;
+2. activa secret scanning, push protection y alertas de Dependabot;
+3. protege `main` con el ruleset del riesgo (1 aprobación; 2 en riesgo alto);
+4. crea los environments (`staging`, `aceptacion-negocio` en riesgo medio o alto, y `production`);
+5. abre un PR con la plantilla (`plantilla-modulo` en el tag de la versión del registry).
+
+Es idempotente: se puede volver a correr desde *Actions → aprovisionamiento → Run workflow*.
+
 ## Configuración de GitHub (una vez)
 
 El repo vive en la organización gratuita `plataforma-mvp-jmg` (ADR 0007): las GitHub Apps solo
@@ -113,7 +126,9 @@ pueden crear repos en organizaciones, y el aprovisionamiento de módulos (I2) lo
 2. **Team `sistemas`:** solo revisores (MVP: `jmgarciarivoiro1-ops`); el autor **no** es miembro.
    Rol *Write* en el repo. Es el code owner de todo (`.github/CODEOWNERS`).
 3. **Ruleset de `main`:** Settings → Rules → Rulesets → *Import a ruleset* → `github/rulesets/main-plataforma.json`.
-4. **Seguridad:** *Secret scanning*, *Push protection* y alertas de Dependabot.
+4. **GitHub App `aprovisionamiento`** (ver ADR 0008): client ID en la variable y clave en el secreto del
+   environment `aprovisionamiento`, restringido a `main`.
+5. **Seguridad:** *Secret scanning*, *Push protection* y alertas de Dependabot.
    **Después de transferir un repo, verificarlas:** la transferencia las apaga.
 
 ## Cómo contribuir

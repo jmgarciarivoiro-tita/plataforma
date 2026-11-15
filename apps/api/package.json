@@ -20,6 +20,7 @@
     "@fastify/reply-from": "12.8.1",
     "@fastify/static": "10.1.11",
     "@plataforma/auth": "workspace:*",
+    "@plataforma/contracts": "workspace:*",
     "fastify": "5.12.8",
     "jose": "6.2.17",
     "openid-client": "6.9.0",
