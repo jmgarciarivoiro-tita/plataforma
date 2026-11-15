@@ -1,0 +1,117 @@
+# Workflow reutilizable con los controles obligatorios de todo módulo (I3-2, ADR 0010).
+# Cada módulo lo llama FIJADO POR SHA desde .github/workflows/modulo-ci.yml; cambiar el SHA es un PR
+# que aprueba Sistemas (CODEOWNERS sobre .github/).
+#
+# - Código y catálogo de políticas: de este repo en el SHA con el que se llamó (job.workflow_sha).
+# - Registry y excepciones: de main (datos vivos: altas nuevas y excepciones aprobadas).
+# - Los comandos los define este workflow (no los scripts del módulo): lint, tipos, tests con
+#   cobertura y build se ejecutan igual en todos los módulos.
+name: modulo-pr
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  calidad:
+    name: calidad (vendor, lint, tipos, tests, build, políticas)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Un reporte de cobertura commiteado no puede reemplazar al que genera esta corrida.
+      - run: rm -rf coverage
+      - name: Copia de @plataforma/auth sin modificar
+        run: pnpm vendor:check
+      - name: Lint
+        run: pnpm exec eslint .
+      - name: Tipos
+        run: pnpm exec tsc -p tsconfig.json --noEmit
+      - name: Tests con cobertura
+        run: pnpm exec vitest run --coverage --coverage.reporter=text --coverage.reporter=json-summary
+      - name: Build
+        run: pnpm build
+
+      # Políticas: corren aunque falle un paso anterior, para informar todo de una vez.
+      - name: Plataforma en la versión fijada (código y catálogo)
+        if: ${{ !cancelled() }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .plataforma
+          persist-credentials: false
+      - name: Registry y excepciones vigentes (main)
+        if: ${{ !cancelled() }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: main
+          path: .plataforma-datos
+          sparse-checkout: |
+            registry
+            policies/excepciones.yaml
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: policy-check
+        if: ${{ !cancelled() }}
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          pnpm --dir .plataforma install --frozen-lockfile --filter "@plataforma/policy-check..."
+          pnpm --dir .plataforma --filter "@plataforma/policy-check..." build
+          args=()
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            printf '%s' "$PR_BODY" > "$RUNNER_TEMP/pr.md"
+            args=(--pr-body "$RUNNER_TEMP/pr.md")
+          fi
+          node .plataforma/packages/policy-check/dist/cli.js \
+            --modulo . \
+            --plataforma .plataforma \
+            --registry .plataforma-datos/registry \
+            --excepciones .plataforma-datos/policies/excepciones.yaml \
+            --repo "${GITHUB_REPOSITORY#*/}" \
+            --salida resumen-ci.json \
+            "${args[@]}"
+      - name: Resumen para la IA (resumen-ci.json)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: resumen-ci
+          path: resumen-ci.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  secretos:
+    name: secretos (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: >
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1
+          git /repo --redact --no-banner --exit-code 1
+
+  dependencias:
+    name: dependencias (osv-scanner)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: >
+          docker run --rm -v "$PWD:/src" ghcr.io/google/osv-scanner:v2.7.1
+          scan source --lockfile /src/pnpm-lock.yaml

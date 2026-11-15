@@ -130,6 +130,9 @@ node packages/policy-check/dist/cli.js --modulo ../modulo-x --plataforma . --rep
 Una excepción se pide por PR a `policies/excepciones.yaml`, con justificación, mitigación y
 vencimiento de hasta 90 días.
 
+Los módulos corren todos sus controles con el workflow reutilizable
+`.github/workflows/modulo-pr.yml`, fijado por SHA desde su `modulo-ci.yml` (ADR 0010).
+
 ## Configuración de GitHub (una vez)
 
 El repo vive en la organización gratuita `plataforma-mvp-jmg` (ADR 0007): las GitHub Apps solo
