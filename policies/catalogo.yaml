@@ -1,0 +1,31 @@
+# Catálogo de políticas exigibles por policy-check (docs/06-guardrails.md es la fuente de los IDs).
+# Tipo E: bloquea el merge. Tipo O: solo advierte. Perfiles: B (bajo), M (medio), A (alto).
+# Cambiarlo requiere PR aprobado por Sistemas (CODEOWNERS sobre /policies/); la IA no puede editarlo.
+version: 1
+politicas:
+  - id: ARQ-01
+    tipo: E
+    perfiles: [B, M, A]
+    check: estructura
+    descripcion: Estructura estándar del repo del módulo.
+  - id: ARQ-06
+    tipo: E
+    perfiles: [B, M, A]
+    check: manifiesto-registry
+    descripcion: Manifiesto válido y coherente con el registry.
+  - id: SEG-12
+    tipo: E
+    perfiles: [B, M, A]
+    check: cadena-suministro
+    descripcion: Lockfile de pnpm, versiones exactas y solo el registro npm oficial.
+  - id: GOB-06
+    tipo: E
+    perfiles: [B, M, A]
+    check: asistencia-ia
+    descripcion: El PR declara si fue asistido por IA y con qué herramienta.
+  - id: COD-05
+    tipo: E
+    perfiles: [B, M, A]
+    check: cobertura
+    descripcion: Cobertura mínima de líneas según el riesgo.
+    umbral: { B: 50, M: 70, A: 80 }

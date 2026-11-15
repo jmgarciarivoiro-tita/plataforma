@@ -44,8 +44,10 @@ apps/shell|studio   React (desde I1)
 apps/aprovisionador Crea y configura los repos de módulos desde el registry (I2-3)
 apps/deployer       Worker de despliegue (I4)
 packages/config     tsconfig y configuración compartida
-packages/contracts  Esquemas compartidos (registry)
-packages/*          auth, ui, db, logger, github, policy-check (según el incremento)
+packages/contracts  Esquemas compartidos (registry y manifiesto de módulos)
+packages/policy-check  Políticas exigibles de los módulos (ADR 0009)
+policies/           Catálogo de políticas y excepciones con vencimiento (solo Sistemas)
+packages/*          auth, ui, db, logger, github (según el incremento)
 infra/local         Docker Compose del entorno local
 github/rulesets     Rulesets a importar en GitHub
 docs/adr            Decisiones de arquitectura
