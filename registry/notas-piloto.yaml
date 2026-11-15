@@ -1,0 +1,24 @@
+id: notas-piloto
+nombre: Notas piloto
+objetivo: Probar el aprovisionamiento automatico de modulos (datos sinteticos).
+area: Sistemas
+empresas: [acopio]
+duenos:
+  product_owner: jmgarciarivoiro-tita
+  responsable_tecnico: jmgarciarivoiro-tita
+repo: modulo-notas-piloto
+plantilla: plantilla-modulo@0.1.0
+estado: propuesto
+riesgo: medio
+criticidad: baja
+sox:
+  en_alcance: false
+  justificacion: Piloto con datos sinteticos.
+datos:
+  clasificacion: interna
+  datos_personales: false
+agente:
+  habilitado: false
+menu:
+  seccion: Sistemas
+  orden: 50
