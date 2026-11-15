@@ -106,9 +106,15 @@ en el gateway y en los que el usuario tiene algún rol; cada módulo se abre den
 
 ## Configuración de GitHub (una vez)
 
-1. **Ruleset de `main`:** Settings → Rules → Rulesets → *Import a ruleset* → `github/rulesets/main-plataforma.json`.
-2. **Revisor:** invitar a `jmgarciarivoiro1-ops` como colaborador con permiso *Write* (ya figura en `.github/CODEOWNERS`).
-3. **Seguridad:** activar *Secret scanning* y *Push protection* (gratis en repos públicos) y Dependabot alerts.
+El repo vive en la organización gratuita `plataforma-mvp-jmg` (ADR 0007): las GitHub Apps solo
+pueden crear repos en organizaciones, y el aprovisionamiento de módulos (I2) lo necesita.
+
+1. **Org:** permiso base *No permission*; los miembros no crean repos (solo owners y la App).
+2. **Team `sistemas`:** solo revisores (MVP: `jmgarciarivoiro1-ops`); el autor **no** es miembro.
+   Rol *Write* en el repo. Es el code owner de todo (`.github/CODEOWNERS`).
+3. **Ruleset de `main`:** Settings → Rules → Rulesets → *Import a ruleset* → `github/rulesets/main-plataforma.json`.
+4. **Seguridad:** *Secret scanning*, *Push protection* y alertas de Dependabot.
+   **Después de transferir un repo, verificarlas:** la transferencia las apaga.
 
 ## Cómo contribuir
 
