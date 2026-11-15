@@ -1,0 +1,26 @@
+# Registry (gobierno) — ver docs de arquitectura de módulos. Cambios solo por PR revisado por Sistemas.
+id: modulo-ejemplo
+nombre: Módulo de ejemplo
+objetivo: Validar el flujo completo de la plataforma (login, gateway, JWT y Shell).
+area: Sistemas
+empresas: [corretaje, acopio, insumos]
+duenos:
+  product_owner: jmgarciarivoiro-tita
+  responsable_tecnico: jmgarciarivoiro-tita
+repo: plataforma
+plantilla: plantilla-modulo@0.1.0
+estado: en_desarrollo
+riesgo: bajo
+criticidad: baja
+sox:
+  en_alcance: false
+  justificacion: Prototipo con datos sintéticos.
+datos:
+  clasificacion: interna
+  datos_personales: false
+agente:
+  habilitado: false
+estimacion_referencia_horas: 16
+menu:
+  seccion: Sistemas
+  orden: 99

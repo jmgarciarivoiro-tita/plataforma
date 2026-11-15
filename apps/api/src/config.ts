@@ -38,6 +38,10 @@ const esquema = z
     // Gateway (I1-4): `id=http://host:puerto,...`. Vacío: ningún módulo montado.
     GATEWAY_MODULOS: z.string().default(''),
     GATEWAY_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(30_000),
+
+    // Shell y registry (I1-5). Rutas relativas a apps/api (donde corre `pnpm dev`).
+    REGISTRY_DIR: z.string().min(1).default('../../registry'),
+    SHELL_DIR: z.string().min(1).default('../shell/dist'),
   })
   .superRefine((c, ctx) => {
     if (c.OIDC_CLIENT_ID && (!c.OIDC_CLIENT_SECRET || !c.SESSION_SECRET)) {

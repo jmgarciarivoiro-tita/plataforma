@@ -12,6 +12,8 @@ import { authHabilitada, cookiesSeguras, type Config } from './config.js';
 import { registrarGateway } from './gateway/rutas.js';
 import type { MapaModulos } from './gateway/modulos.js';
 import { enviarProblema } from './http/problema.js';
+import type { ModuloRegistry } from './registry/registry.js';
+import { registrarShell } from './shell/rutas.js';
 import { registrarRutasSistema, type ChequeoListo } from './sistema/rutas.js';
 
 const HEADER_CORRELACION = 'x-correlation-id';
@@ -28,9 +30,11 @@ export interface OpcionesApp {
   roles?: ProveedorRoles | ((log: FastifyBaseLogger) => ProveedorRoles);
   /** Módulos montados en /m/<id> (requiere emisor). */
   modulos?: MapaModulos;
+  /** Registry de módulos y carpeta del build del Shell. Sin registry no se publica el Shell. */
+  shell?: { registry: ModuloRegistry[]; dir: string };
 }
 
-export function construirApp({ config, chequeos = [], auth, emisor, roles: rolesOFabrica, modulos }: OpcionesApp): FastifyInstance {
+export function construirApp({ config, chequeos = [], auth, emisor, roles: rolesOFabrica, modulos, shell }: OpcionesApp): FastifyInstance {
   const app = Fastify({
     logger: {
       level: config.NODE_ENV === 'test' ? 'silent' : config.LOG_LEVEL,
@@ -52,6 +56,11 @@ export function construirApp({ config, chequeos = [], auth, emisor, roles: roles
 
   app.addHook('onSend', async (req, reply) => {
     reply.header(HEADER_CORRELACION, req.id);
+    // Cabeceras de seguridad para todo (incluidas las respuestas de módulos vía gateway).
+    reply.header('x-content-type-options', 'nosniff');
+    reply.header('referrer-policy', 'same-origin');
+    reply.header('x-frame-options', 'SAMEORIGIN');
+    if (!reply.hasHeader('content-security-policy')) reply.header('content-security-policy', "frame-ancestors 'self'");
   });
 
   // E8: errores en formato Problem Details, sin stack traces hacia el cliente.
@@ -90,6 +99,12 @@ export function construirApp({ config, chequeos = [], auth, emisor, roles: roles
   }
 
   if (emisor) app.after(() => registrarRutasJwt(app, { emisor, diagnostico: config.ENTORNO === 'local', ...(roles ? { roles } : {}) }));
+
+  if (shell) {
+    app.register(async (scope) =>
+      registrarShell(scope, { registry: shell.registry, modulos: modulos ?? new Map(), roles, dirShell: shell.dir }),
+    );
+  }
 
   if (emisor && modulos && modulos.size > 0) {
     app.register(async (scope) =>
