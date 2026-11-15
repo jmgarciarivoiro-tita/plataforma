@@ -21,9 +21,11 @@ de Sistemas. Hechos verificados en la documentación de GitHub:
   Contents, Pull requests y Workflows (write); Members y Metadata (read). El workflow pide un token de
   1 hora con exactamente esos permisos.
 - La clave privada vive en el environment `aprovisionamiento`, restringido a la rama `main`.
-- **Sin `/generate`:** el repo se crea vacío, se inicializa `main` con un commit vacío, se protege con el
-  ruleset y recién después el contenido de la plantilla (tag `v<versión>` del registry) entra por **PR**.
-  Ningún código llega a `main` sin aprobación, tampoco el inicial.
+- **Sin `/generate`:** el repo se crea vacío, se inicializa `main` con un primer commit que solo trae `.github/CODEOWNERS`
+  (team `sistemas`), se protege con el ruleset y recién después el contenido de la plantilla (tag `v<versión>` del registry) entra por **PR**.
+  Ningún código llega a `main` sin aprobación, tampoco el inicial, y el PR inicial ya exige la
+  aprobación del code owner (corrección del hallazgo 2 de I2: con `main` vacía, GitHub no pedía la
+  revisión al team y el owner de la org podía aprobar el código del bot).
 - **Configuración por riesgo:**
 
   | | Bajo | Medio | Alto |

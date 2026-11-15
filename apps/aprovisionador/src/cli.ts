@@ -27,7 +27,7 @@ const resultados = await reconciliarRegistry(modulos, {
   teamRevisores: env.TEAM_REVISORES,
   repoPlantilla: env.REPO_PLANTILLA,
   gh: crearClienteGitHub({ token: env.GH_TOKEN }),
-  git: crearOperacionesGit({ org: env.ORG, token: env.GH_TOKEN, repoPlantilla: env.REPO_PLANTILLA, autorNombre: env.GIT_AUTOR_NOMBRE, autorEmail: env.GIT_AUTOR_EMAIL }),
+  git: crearOperacionesGit({ org: env.ORG, token: env.GH_TOKEN, repoPlantilla: env.REPO_PLANTILLA, teamRevisores: env.TEAM_REVISORES, autorNombre: env.GIT_AUTOR_NOMBRE, autorEmail: env.GIT_AUTOR_EMAIL }),
 });
 
 const md = resumenMarkdown(resultados);

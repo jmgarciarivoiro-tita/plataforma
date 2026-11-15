@@ -1,7 +1,7 @@
 // Operaciones git con el token de la App. El token va por variables de entorno de git
 // (GIT_CONFIG_*), nunca en la URL ni en los argumentos del proceso.
 import { execFile } from 'node:child_process';
-import { cpSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -16,6 +16,8 @@ export interface OpcionesGit {
   org: string;
   token: string;
   repoPlantilla: string;
+  /** Team code owner del commit inicial (slug). */
+  teamRevisores: string;
   autorNombre: string;
   autorEmail: string;
   /** Solo para tests: base de las URLs de los repos (por defecto https://github.com). */
@@ -46,8 +48,12 @@ export function crearOperacionesGit(o: OpcionesGit): OperacionesGit {
     async inicializarMain(repo) {
       const dir = temporal();
       try {
+        // main nace con CODEOWNERS: el PR inicial ya exige la aprobación del team (hallazgo 2 de I2).
         await git(dir, 'init', '-q', '-b', 'main');
-        await git(dir, 'commit', '-q', '--allow-empty', '-m', 'chore: inicio del repo (aprovisionamiento)');
+        mkdirSync(join(dir, '.github'));
+        writeFileSync(join(dir, '.github', 'CODEOWNERS'), codeownersInicial(o.org, o.teamRevisores));
+        await git(dir, 'add', '-A');
+        await git(dir, 'commit', '-q', '-m', 'chore: inicio del repo con CODEOWNERS (aprovisionamiento)');
         await git(dir, 'push', '-q', url(repo), 'main');
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -74,4 +80,8 @@ export function crearOperacionesGit(o: OpcionesGit): OperacionesGit {
       }
     },
   };
+}
+
+export function codeownersInicial(org: string, team: string): string {
+  return `# Sistemas aprueba todo cambio (ADR-085). Lo reemplaza el CODEOWNERS de la plantilla.\n*  @${org}/${team}\n`;
 }
