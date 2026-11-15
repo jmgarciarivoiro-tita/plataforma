@@ -12,6 +12,7 @@ RUN pnpm install --frozen-lockfile \
 
 FROM node:26-alpine AS runtime
 ENV NODE_ENV=production
+ENV HOST=0.0.0.0
 WORKDIR /app
 COPY --from=build /out .
 USER node

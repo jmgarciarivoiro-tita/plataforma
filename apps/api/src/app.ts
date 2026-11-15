@@ -9,6 +9,8 @@ import type { ProveedorIdentidad } from './auth/proveedor.js';
 import type { ProveedorRoles } from './auth/roles.js';
 import type { AlmacenSesiones } from './auth/sesiones.js';
 import { authHabilitada, cookiesSeguras, type Config } from './config.js';
+import { registrarGateway } from './gateway/rutas.js';
+import type { MapaModulos } from './gateway/modulos.js';
 import { enviarProblema } from './http/problema.js';
 import { registrarRutasSistema, type ChequeoListo } from './sistema/rutas.js';
 
@@ -24,9 +26,11 @@ export interface OpcionesApp {
   emisor?: EmisorJwt;
   /** Roles de los usuarios (o una fábrica que recibe el logger). Sin proveedor, nadie tiene roles. */
   roles?: ProveedorRoles | ((log: FastifyBaseLogger) => ProveedorRoles);
+  /** Módulos montados en /m/<id> (requiere emisor). */
+  modulos?: MapaModulos;
 }
 
-export function construirApp({ config, chequeos = [], auth, emisor, roles: rolesOFabrica }: OpcionesApp): FastifyInstance {
+export function construirApp({ config, chequeos = [], auth, emisor, roles: rolesOFabrica, modulos }: OpcionesApp): FastifyInstance {
   const app = Fastify({
     logger: {
       level: config.NODE_ENV === 'test' ? 'silent' : config.LOG_LEVEL,
@@ -86,6 +90,12 @@ export function construirApp({ config, chequeos = [], auth, emisor, roles: roles
   }
 
   if (emisor) app.after(() => registrarRutasJwt(app, { emisor, diagnostico: config.ENTORNO === 'local', ...(roles ? { roles } : {}) }));
+
+  if (emisor && modulos && modulos.size > 0) {
+    app.register(async (scope) =>
+      registrarGateway(scope, { modulos, emisor, roles, timeoutMs: config.GATEWAY_TIMEOUT_MS }),
+    );
+  }
 
   registrarRutasSistema(app, config, chequeos);
   return app;

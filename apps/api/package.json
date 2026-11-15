@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@fastify/cookie": "11.1.5",
+    "@fastify/reply-from": "12.8.1",
     "@plataforma/auth": "workspace:*",
     "fastify": "5.12.8",
     "jose": "6.2.17",

@@ -7,6 +7,7 @@ import { crearProveedorOidc } from './auth/oidc.js';
 import { ProveedorRolesYaml } from './auth/roles.js';
 import { AlmacenSesionesMemoria } from './auth/sesiones.js';
 import { authHabilitada, cargarConfig } from './config.js';
+import { parsearModulos } from './gateway/modulos.js';
 
 const config = cargarConfig();
 const auth =
@@ -28,7 +29,9 @@ const emisor = await crearEmisorJwt({
   jwkPublicaAnterior: config.PLATFORM_JWT_PUBLIC_JWK_ANTERIOR,
 });
 const roles = (log: FastifyBaseLogger) => new ProveedorRolesYaml(resolve(config.ROLES_YAML_PATH), log);
-const app = construirApp({ config, emisor, roles, ...(auth ? { auth } : {}) });
+const modulos = parsearModulos(config.GATEWAY_MODULOS);
+const app = construirApp({ config, emisor, roles, modulos, ...(auth ? { auth } : {}) });
+if (modulos.size > 0) app.log.info({ modulos: [...modulos.keys()] }, 'gateway: módulos montados');
 if (emisor.efimera) app.log.warn('JWT con clave efímera (solo local): los tokens dejan de valer al reiniciar');
 if (!auth) app.log.warn('login deshabilitado: falta OIDC_CLIENT_ID, OIDC_CLIENT_SECRET o SESSION_SECRET');
 
