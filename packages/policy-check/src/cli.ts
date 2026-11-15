@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 // policy-check --modulo <dir> --plataforma <dir> --repo <nombre> [--pr-body <archivo>] [--salida <json>]
+//              [--registry <dir>] [--excepciones <archivo>]
+// El catálogo sale de --plataforma (versión fijada); registry y excepciones pueden venir de main (datos vivos).
 // Código de salida: 0 cumple · 1 bloquea el merge · 2 configuración inválida.
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -17,6 +19,8 @@ const { values: a } = parseArgs({
     'pr-body': { type: 'string' },
     salida: { type: 'string' },
     hoy: { type: 'string' },
+    registry: { type: 'string' },
+    excepciones: { type: 'string' },
   },
 });
 
@@ -27,9 +31,9 @@ try {
   const resultado = evaluar({
     dir: a.modulo,
     repo: a.repo,
-    registry: cargarRegistry(join(a.plataforma, 'registry')),
+    registry: cargarRegistry(a.registry ?? join(a.plataforma, 'registry')),
     catalogo,
-    excepciones: cargarExcepciones(join(a.plataforma, 'policies/excepciones.yaml'), catalogo, hoy),
+    excepciones: cargarExcepciones(a.excepciones ?? join(a.plataforma, 'policies/excepciones.yaml'), catalogo, hoy),
     cuerpoPr: a['pr-body'] ? readFileSync(a['pr-body'], 'utf8') : null,
     hoy,
   });
