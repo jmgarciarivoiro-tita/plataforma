@@ -117,6 +117,19 @@ el workflow `aprovisionamiento` (ADR 0008):
 
 Es idempotente: se puede volver a correr desde *Actions → aprovisionamiento → Run workflow*.
 
+## Políticas de los módulos (I3)
+
+`policies/catalogo.yaml` define qué se exige a cada módulo según su riesgo y `policy-check` lo
+verifica en la CI del módulo (ADR 0009). Para probarlo a mano contra un módulo clonado:
+
+```bash
+pnpm --filter "@plataforma/policy-check..." build
+node packages/policy-check/dist/cli.js --modulo ../modulo-x --plataforma . --repo modulo-x --pr-body pr.md
+```
+
+Una excepción se pide por PR a `policies/excepciones.yaml`, con justificación, mitigación y
+vencimiento de hasta 90 días.
+
 ## Configuración de GitHub (una vez)
 
 El repo vive en la organización gratuita `plataforma-mvp-jmg` (ADR 0007): las GitHub Apps solo

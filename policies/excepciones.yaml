@@ -1,0 +1,11 @@
+# Excepciones aprobadas (docs/06-guardrails.md §5). Vencen como máximo a 90 días; vencidas, el check
+# vuelve a fallar. Agregar una requiere PR aprobado por Sistemas (y Seguridad en el corporativo).
+#
+# - id: EXC-2026-001
+#   modulo: notas-piloto
+#   politica: COD-05
+#   detalle: Motivo concreto.
+#   mitigacion: Qué se hace mientras tanto.
+#   vence: 2027-02-14
+#   aprobado_por: [sistemas]
+excepciones: []

@@ -65,3 +65,13 @@ describe('cargarRegistry', () => {
     expect(() => cargarRegistry(dir)).toThrow(/Registry inválido/);
   });
 });
+
+describe('esquemaManifiesto', () => {
+  it('valida el manifiesto de la plantilla y rechaza roles duplicados o campos extra', async () => {
+    const { esquemaManifiesto } = await import('../src/index.js');
+    const ok = { id: 'notas', version: '0.1.0', roles: [{ id: 'lector', descripcion: 'x' }] };
+    expect(esquemaManifiesto.safeParse(ok).success).toBe(true);
+    expect(esquemaManifiesto.safeParse({ ...ok, roles: [...ok.roles, ...ok.roles] }).success).toBe(false);
+    expect(esquemaManifiesto.safeParse({ ...ok, base_datos: 'prod' }).success).toBe(false);
+  });
+});
