@@ -41,9 +41,11 @@ API/gateway, deployer y paquetes compartidos. Lo gobierna Sistemas.
 ```
 apps/api            Fastify: sistema (/health, /ready, /meta), auth y gateway (I1)
 apps/shell|studio   React (desde I1)
+apps/aprovisionador Crea y configura los repos de módulos desde el registry (I2-3)
 apps/deployer       Worker de despliegue (I4)
 packages/config     tsconfig y configuración compartida
-packages/*          contracts, auth, ui, db, logger, github, policy-check (según el incremento)
+packages/contracts  Esquemas compartidos (registry)
+packages/*          auth, ui, db, logger, github, policy-check (según el incremento)
 infra/local         Docker Compose del entorno local
 github/rulesets     Rulesets a importar en GitHub
 docs/adr            Decisiones de arquitectura

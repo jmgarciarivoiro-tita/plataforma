@@ -1,0 +1,73 @@
+# Aprovisionamiento de repos de módulos (I2-3, ADR 0008).
+# Corre después del merge de un cambio en registry/ (ya aprobado por Sistemas) o a mano.
+# La clave de la GitHub App está en el environment "aprovisionamiento", que solo acepta la rama main:
+# un PR no puede leerla.
+name: aprovisionamiento
+on:
+  push:
+    branches: [main]
+    paths: ['registry/**']
+  workflow_dispatch:
+    inputs:
+      modulo:
+        description: 'id del módulo (vacío = todos)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aprovisionamiento
+  cancel-in-progress: false
+
+jobs:
+  aprovisionar:
+    name: aprovisionar módulos
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: aprovisionamiento
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter "@plataforma/aprovisionador..." build
+
+      # Token de 1 hora, limitado a los permisos que usa el aprovisionador (mínimo privilegio).
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app
+        with:
+          client-id: ${{ vars.APROVISIONAMIENTO_CLIENT_ID }}
+          private-key: ${{ secrets.APROVISIONAMIENTO_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-administration: write
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+          permission-members: read
+
+      - name: Identidad del bot para los commits
+        id: bot
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SLUG: ${{ steps.app.outputs.app-slug }}
+        run: |
+          id=$(gh api "/users/${SLUG}%5Bbot%5D" --jq .id)
+          echo "nombre=${SLUG}[bot]" >> "$GITHUB_OUTPUT"
+          echo "email=${id}+${SLUG}[bot]@users.noreply.github.com" >> "$GITHUB_OUTPUT"
+
+      - name: Aprovisionar
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          ORG: ${{ github.repository_owner }}
+          TEAM_REVISORES: sistemas
+          REPO_PLANTILLA: plantilla-modulo
+          REGISTRY_DIR: registry
+          GIT_AUTOR_NOMBRE: ${{ steps.bot.outputs.nombre }}
+          GIT_AUTOR_EMAIL: ${{ steps.bot.outputs.email }}
+          SOLO_MODULO: ${{ inputs.modulo }}
+        run: node apps/aprovisionador/dist/cli.js
