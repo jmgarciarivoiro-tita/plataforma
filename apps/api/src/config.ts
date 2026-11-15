@@ -8,7 +8,8 @@ const esquema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-    HOST: z.string().default('0.0.0.0'),
+    // 127.0.0.1 por defecto: en la PC la API no queda expuesta a la red local. Docker usa 0.0.0.0.
+    HOST: z.string().default('127.0.0.1'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
     ENTORNO: z.enum(['local', 'staging', 'production']).default('local'),
     // Datos de /meta: los inyecta el pipeline al construir la imagen (P5).
@@ -33,6 +34,10 @@ const esquema = z
     // Roles (I1-3). MVP: YAML local fuera del repo; Fase 1.5: Google Workspace.
     ROLES_PROVEEDOR: z.enum(['yaml']).default('yaml'),
     ROLES_YAML_PATH: z.string().min(1).default('../../infra/local/roles.local.yaml'),
+
+    // Gateway (I1-4): `id=http://host:puerto,...`. Vacío: ningún módulo montado.
+    GATEWAY_MODULOS: z.string().default(''),
+    GATEWAY_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(30_000),
   })
   .superRefine((c, ctx) => {
     if (c.OIDC_CLIENT_ID && (!c.OIDC_CLIENT_SECRET || !c.SESSION_SECRET)) {

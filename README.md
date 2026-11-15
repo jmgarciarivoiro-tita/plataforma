@@ -78,6 +78,21 @@ const claims = await verificar(tokenDeHeader(req.headers.authorization) ?? '');
    mantiene la versión anterior y lo registra en el log. Si es inválido al arrancar, la API no inicia.
 3. `GET /auth/me` muestra tus roles; el JWT lleva los roles del módulo de su `aud` y tus empresas.
 
+## Gateway de módulos (I1-4)
+
+`pnpm dev` levanta la API (8080) y el **módulo de ejemplo** (`apps/modulo-ejemplo`, 3101).
+Con `GATEWAY_MODULOS=modulo-ejemplo=http://127.0.0.1:3101` en el `.env`, abrir
+`http://localhost:8080/m/modulo-ejemplo/`.
+
+En cada request a `/m/<id>/…` el gateway:
+
+1. Verifica la sesión (sin sesión: redirige al login o responde 401).
+2. Exige al menos un rol del usuario en ese módulo (si no: 403, la request no llega al módulo).
+3. Emite un JWT de 5 minutos con `aud=modulo:<id>` y los roles de ese módulo.
+4. Reenvía con `Authorization: Bearer …` y `x-correlation-id`; **quita la cookie de sesión** y
+   cualquier `Authorization` del cliente, y descarta los `Set-Cookie` que devuelva el módulo.
+5. Rechaza rutas que intentan salir del prefijo (`..`, `%2e%2e`, `%2f`) y responde 502 si el módulo no está disponible.
+
 ## Configuración de GitHub (una vez)
 
 1. **Ruleset de `main`:** Settings → Rules → Rulesets → *Import a ruleset* → `github/rulesets/main-plataforma.json`.

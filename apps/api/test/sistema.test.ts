@@ -132,3 +132,10 @@ describe('configuración del JWT', () => {
     expect(cargarConfig({ ENTORNO: 'staging', PLATFORM_JWT_PRIVATE_JWK: '{}' }).ENTORNO).toBe('staging');
   });
 });
+
+describe('HOST por defecto', () => {
+  it('escucha solo en localhost salvo que se configure otra cosa', () => {
+    expect(cargarConfig({}).HOST).toBe('127.0.0.1');
+    expect(cargarConfig({ HOST: '0.0.0.0' }).HOST).toBe('0.0.0.0');
+  });
+});
