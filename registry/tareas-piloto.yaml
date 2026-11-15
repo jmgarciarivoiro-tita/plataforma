@@ -1,0 +1,24 @@
+id: tareas-piloto
+nombre: Tareas piloto
+objetivo: Verificar el CODEOWNERS inicial del aprovisionamiento (datos sinteticos).
+area: Sistemas
+empresas: [acopio]
+duenos:
+  product_owner: jmgarciarivoiro-tita
+  responsable_tecnico: jmgarciarivoiro-tita
+repo: modulo-tareas-piloto
+plantilla: plantilla-modulo@0.1.0
+estado: propuesto
+riesgo: bajo
+criticidad: baja
+sox:
+  en_alcance: false
+  justificacion: Piloto con datos sinteticos.
+datos:
+  clasificacion: interna
+  datos_personales: false
+agente:
+  habilitado: false
+menu:
+  seccion: Sistemas
+  orden: 51
