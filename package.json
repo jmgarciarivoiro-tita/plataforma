@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "test": "pnpm -r test",
     "verify": "pnpm lint && pnpm build && pnpm typecheck && pnpm test",
-    "dev": "pnpm --filter \"./packages/*\" build && pnpm --parallel --filter \"./apps/*\" dev"
+    "dev": "pnpm --filter \"./packages/*\" --filter @plataforma/shell build && pnpm --parallel --filter \"./apps/*\" dev"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

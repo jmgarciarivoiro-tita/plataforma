@@ -93,6 +93,17 @@ En cada request a `/m/<id>/…` el gateway:
    cualquier `Authorization` del cliente, y descarta los `Set-Cookie` que devuelva el módulo.
 5. Rechaza rutas que intentan salir del prefijo (`..`, `%2e%2e`, `%2f`) y responde 502 si el módulo no está disponible.
 
+## Shell (I1-5)
+
+`http://localhost:8080/` es la pantalla de los usuarios finales (React + Vite + Mantine, en
+`apps/shell`). Muestra solo los módulos del **registry** (`registry/<id>.yaml`) que están montados
+en el gateway y en los que el usuario tiene algún rol; cada módulo se abre dentro del Shell.
+
+- `pnpm dev` compila el Shell y lo recompila al guardar (`vite build --watch`): recargá el navegador.
+- El Shell se sirve con CSP estricta (solo mismo origen; nadie puede embeber la plataforma).
+- Un `registry/<id>.yaml` inválido impide arrancar la API (se valida con Zod: sin emails ni URLs,
+  PO ≠ responsable técnico en riesgo alto o SOX, datos personales ⇒ riesgo ≥ medio).
+
 ## Configuración de GitHub (una vez)
 
 1. **Ruleset de `main`:** Settings → Rules → Rulesets → *Import a ruleset* → `github/rulesets/main-plataforma.json`.

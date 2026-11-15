@@ -5,6 +5,7 @@ import globals from 'globals';
 
 export default tseslint.config(
   { ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**'] },
+  { files: ['**/*.{ts,tsx,js}'] },
   js.configs.recommended,
   ...tseslint.configs.strict,
   {
@@ -13,5 +14,9 @@ export default tseslint.config(
       'no-console': 'error', // usar el logger (E7)
       '@typescript-eslint/no-explicit-any': 'error',
     },
+  },
+  {
+    files: ['apps/shell/src/**/*.{ts,tsx}'],
+    languageOptions: { globals: { ...globals.browser } },
   },
 );
