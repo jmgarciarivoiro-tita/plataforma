@@ -15,7 +15,7 @@ import {
 } from './deseado.js';
 
 export interface OperacionesGit {
-  /** Crea `main` con un commit vacío (antes de proteger la rama). */
+  /** Crea `main` con un primer commit que solo trae CODEOWNERS (antes de proteger la rama). */
   inicializarMain(repo: string): Promise<void>;
   /** Sube la plantilla adaptada al módulo a la rama RAMA_INICIAL. */
   publicarContenido(repo: string, m: ModuloRegistry, tag: string): Promise<void>;
@@ -74,7 +74,7 @@ export async function reconciliarModulo(m: ModuloRegistry, ctx: Contexto): Promi
     await gh.pedir('PUT', `/orgs/${org}/teams/${ctx.teamRevisores}/repos/${org}/${m.repo}`, { permission: 'push' });
     r.acciones.push(`team ${ctx.teamRevisores}: write`);
 
-    // 4. main existe antes de protegerla: después ni la App puede pushear a main.
+    // 4. main existe (con CODEOWNERS) antes de protegerla: después ni la App puede pushear a main.
     if (!(await gh.buscar(`${repo}/branches/main`))) {
       await ctx.git.inicializarMain(m.repo);
       r.acciones.push('main inicializada');

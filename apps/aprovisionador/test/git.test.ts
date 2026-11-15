@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { crearOperacionesGit } from '../src/git.js';
+import { codeownersInicial, crearOperacionesGit } from '../src/git.js';
 import { modulo } from './modulo.js';
 
 let raiz: string;
@@ -33,11 +33,13 @@ afterEach(() => rmSync(raiz, { recursive: true, force: true }));
 
 describe('operaciones git', () => {
   it('inicializa main vacía y publica la plantilla adaptada en la rama inicial, con el autor del bot', async () => {
-    const ops = crearOperacionesGit({ org: 'org', token: 'tok', repoPlantilla: 'plantilla-modulo', autorNombre: 'bot[bot]', autorEmail: '1+bot[bot]@users.noreply.github.com', baseGit: `file://${raiz}` });
+    const ops = crearOperacionesGit({ org: 'org', token: 'tok', repoPlantilla: 'plantilla-modulo', teamRevisores: 'sistemas', autorNombre: 'bot[bot]', autorEmail: '1+bot[bot]@users.noreply.github.com', baseGit: `file://${raiz}` });
     const remoto = join(raiz, 'org', 'modulo-notas.git');
 
     await ops.inicializarMain('modulo-notas');
-    expect(git(remoto, 'log', '--format=%s|%an', 'main')).toBe('chore: inicio del repo (aprovisionamiento)|bot[bot]');
+    expect(git(remoto, 'log', '--format=%s|%an', 'main')).toBe('chore: inicio del repo con CODEOWNERS (aprovisionamiento)|bot[bot]');
+    expect(git(remoto, 'ls-tree', '-r', '--name-only', 'main')).toBe('.github/CODEOWNERS');
+    expect(git(remoto, 'show', 'main:.github/CODEOWNERS')).toContain('*  @org/sistemas');
 
     await ops.publicarContenido('modulo-notas', modulo(), 'v0.1.0');
     expect(git(remoto, 'log', '--format=%s', 'aprovisionamiento/inicial')).toContain('chore: contenido inicial desde plantilla-modulo@0.1.0');
@@ -52,9 +54,15 @@ describe('operaciones git', () => {
   });
 
   it('tag inexistente → falla sin publicar nada', async () => {
-    const ops = crearOperacionesGit({ org: 'org', token: 'tok', repoPlantilla: 'plantilla-modulo', autorNombre: 'b', autorEmail: 'b@b', baseGit: `file://${raiz}` });
+    const ops = crearOperacionesGit({ org: 'org', token: 'tok', repoPlantilla: 'plantilla-modulo', teamRevisores: 'sistemas', autorNombre: 'b', autorEmail: 'b@b', baseGit: `file://${raiz}` });
     await ops.inicializarMain('modulo-notas');
     await expect(ops.publicarContenido('modulo-notas', modulo(), 'v9.9.9')).rejects.toThrow();
     expect(() => git(join(raiz, 'org', 'modulo-notas.git'), 'rev-parse', '--verify', 'aprovisionamiento/inicial')).toThrow();
+  });
+});
+
+describe('CODEOWNERS inicial', () => {
+  it('asigna todo el repo al team de revisores', () => {
+    expect(codeownersInicial('mi-org', 'sistemas')).toMatch(/^# .*\n\* {2}@mi-org\/sistemas\n$/);
   });
 });
