@@ -80,6 +80,7 @@ jobs:
             --registry .plataforma-datos/registry \
             --excepciones .plataforma-datos/policies/excepciones.yaml \
             --repo "${GITHUB_REPOSITORY#*/}" \
+            --repo-plantilla plantilla-modulo \
             --salida resumen-ci.json \
             "${args[@]}"
       - name: Resumen para la IA (resumen-ci.json)

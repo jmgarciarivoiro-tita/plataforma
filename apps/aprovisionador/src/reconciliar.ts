@@ -140,6 +140,11 @@ function cuerpoPr(m: ModuloRegistry, ctx: Contexto): string {
     `- Product Owner: ${m.duenos.product_owner} · responsable técnico: ${m.duenos.responsable_tecnico}`,
     '',
     'Lo abrió el aprovisionamiento de la plataforma (GitHub App). Requiere la aprobación de Sistemas como cualquier PR.',
+    '',
+    '## Asistencia de IA (GOB-06)',
+    '',
+    '- Herramienta: ninguna',
+    '- Alcance: contenido generado por una automatización determinista (copia de la plantilla con reemplazos fijos).',
   ].join('\n');
 }
 

@@ -159,3 +159,34 @@ describe('excepciones', () => {
     expect(estado(r, 'COD-05')).toBe('falla');
   });
 });
+
+describe('repo de la plantilla', () => {
+  const plantilla = () => {
+    const dir = moduloValido();
+    writeFileSync(join(dir, 'modulo.yaml'), 'id: plantilla-modulo\nversion: 0.1.0\nroles:\n  - id: lector\n    descripcion: x\n');
+    escribir(dir, 'package.json', JSON.stringify({ name: 'plantilla-modulo', packageManager: 'pnpm@12.18.0' }));
+    return dir;
+  };
+  const evaluarPlantilla = (dir: string, repo = 'plantilla-modulo') =>
+    evaluar({ dir, repo, registry: [registro()], catalogo, excepciones: [], cuerpoPr: CUERPO_PR_OK, hoy: HOY, repoPlantilla: 'plantilla-modulo' });
+
+  it('no necesita estar en el registry y se evalúa con el perfil más exigente', () => {
+    const r = evaluarPlantilla(plantilla());
+    expect(estado(r, 'ARQ-06')).toBe('ok');
+    expect(r.perfil).toBe('A');
+    expect(r.bloquea).toBe(false);
+  });
+
+  it('id o paquete con otro nombre → bloquea', () => {
+    const dir = plantilla();
+    writeFileSync(join(dir, 'modulo.yaml'), 'id: otro-id\nversion: 0.1.0\nroles:\n  - id: lector\n    descripcion: x\n');
+    escribir(dir, 'package.json', JSON.stringify({ name: 'otro', packageManager: 'pnpm@12.18.0' }));
+    expect(fallas(evaluarPlantilla(dir), 'ARQ-06')).toEqual(['en la plantilla, el id tiene que ser "plantilla-modulo"', 'en la plantilla, package.json tiene que llamarse "plantilla-modulo"']);
+  });
+
+  it('un módulo no puede hacerse pasar por la plantilla: se decide por el nombre real del repo', () => {
+    const r = evaluarPlantilla(plantilla(), 'modulo-impostor');
+    expect(fallas(r, 'ARQ-06')).toEqual(['el módulo "plantilla-modulo" no está en el registry']);
+    expect(r.bloquea).toBe(true);
+  });
+});

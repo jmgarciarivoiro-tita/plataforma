@@ -20,6 +20,8 @@ export interface ContextoCheck {
   perfil: Perfil;
   /** Cuerpo del PR; null si la ejecución no es de un PR. */
   cuerpoPr: string | null;
+  /** El repo evaluado es la plantilla de módulos (no figura en el registry). */
+  esPlantilla: boolean;
 }
 
 export type Check = (ctx: ContextoCheck, p: Politica) => Falla[] | null;
@@ -84,6 +86,14 @@ export const manifiestoRegistry: Check = (ctx) => {
       archivo: 'modulo.yaml',
       sugerencia: 'El manifiesto solo admite id, version y roles (id, descripcion).',
     }));
+  }
+  if (ctx.esPlantilla) {
+    // La plantilla no es un módulo: su id y su paquete tienen que llamarse como el repo.
+    const fallas: Falla[] = [];
+    if (r.data.id !== ctx.repo) fallas.push({ mensaje: `en la plantilla, el id tiene que ser "${ctx.repo}"`, archivo: 'modulo.yaml', sugerencia: 'El aprovisionamiento reemplaza ese id al generar cada módulo.' });
+    const nombre = existe(ctx, 'package.json') ? (JSON.parse(leer(ctx, 'package.json')) as { name?: string }).name : undefined;
+    if (nombre !== ctx.repo) fallas.push({ mensaje: `en la plantilla, package.json tiene que llamarse "${ctx.repo}"`, archivo: 'package.json', sugerencia: 'El aprovisionamiento reemplaza ese nombre al generar cada módulo.' });
+    return fallas;
   }
   const m = ctx.registry.find((x) => x.id === r.data.id);
   if (!m) {
