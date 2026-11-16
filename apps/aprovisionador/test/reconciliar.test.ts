@@ -50,6 +50,7 @@ describe('reconciliarModulo', () => {
     const pr = gh.llamadas.find((l) => l.ruta.endsWith('/pulls'))?.cuerpo as { head: string; base: string; body: string };
     expect(pr).toMatchObject({ head: 'aprovisionamiento/inicial', base: 'main' });
     expect(pr.body).toContain('Requiere la aprobación de Sistemas');
+    expect(pr.body).toMatch(/## Asistencia de IA \(GOB-06\)\n\n- Herramienta: ninguna/);
     expect(r.acciones.at(-1)).toContain('PR inicial');
   });
 
