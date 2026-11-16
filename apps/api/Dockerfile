@@ -1,7 +1,8 @@
 # Imagen de la API. Se construye desde la raíz del monorepo:
 #   docker build -f apps/api/Dockerfile -t plataforma-api .
 FROM node:26-alpine AS base
-RUN corepack enable
+# Node 25+ ya no incluye corepack: se instala en versión fija y pnpm sale de "packageManager".
+RUN npm install -g corepack@0.36.0 && corepack enable
 WORKDIR /repo
 
 FROM base AS build

@@ -132,7 +132,9 @@ Una excepción se pide por PR a `policies/excepciones.yaml`, con justificación,
 vencimiento de hasta 90 días.
 
 Los módulos corren todos sus controles con el workflow reutilizable
-`.github/workflows/modulo-pr.yml`, fijado por SHA desde su `modulo-ci.yml` (ADR 0010).
+`.github/workflows/modulo-pr.yml`, fijado por SHA desde su `modulo-ci.yml` (ADR 0010). Al mergear en
+`main`, `modulo-publicar.yml` prueba la imagen, la publica en GHCR por digest y firma las atestaciones
+de procedencia y SBOM (ADR 0011).
 
 ## Configuración de GitHub (una vez)
 
