@@ -135,6 +135,28 @@ describe('reconciliarModulo', () => {
   });
 });
 
+describe('etiqueta revision-simulada', () => {
+  it('la crea una sola vez', async () => {
+    const gh = new GitHubFalso(ORG);
+    const { ctx } = contexto(gh);
+    expect((await reconciliarModulo(modulo(), ctx)).acciones).toContain('etiqueta revision-simulada');
+    expect(gh.llamadas.find((l) => l.metodo === 'POST' && l.ruta.endsWith('/labels'))?.cuerpo).toMatchObject({ name: 'revision-simulada', color: 'FBCA04' });
+    gh.llamadas = [];
+    expect((await reconciliarModulo(modulo(), ctx)).acciones).not.toContain('etiqueta revision-simulada');
+    expect(gh.rutas('POST')).not.toContain(`POST /repos/${ORG}/modulo-notas/labels`);
+  });
+
+  it('si no se puede crear, lo informa y el aprovisionamiento sigue', async () => {
+    const gh = new GitHubFalso(ORG);
+    gh.fallarEtiquetas = true;
+    const { ctx } = contexto(gh);
+    const r = await reconciliarModulo(modulo(), ctx);
+    expect(r.estado).toBe('ok');
+    expect(r.acciones).toContain('etiqueta revision-simulada: no se pudo crear (403)');
+    expect(r.acciones.at(-1)).toContain('PR inicial');
+  });
+});
+
 describe('CodeQL (SEG-10)', () => {
   const reglas = (gh: GitHubFalso) =>
     (gh.llamadas.filter((l) => /\/rulesets(\/\d+)?$/.test(l.ruta) && l.metodo !== 'GET').at(-1)?.cuerpo as { rules: { type: string; parameters?: unknown }[] }).rules;

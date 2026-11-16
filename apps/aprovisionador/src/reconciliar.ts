@@ -1,12 +1,13 @@
 // Reconciliación idempotente: lleva cada repo de módulo al estado deseado. Nunca borra ni transfiere
 // repos, y solo toca repos llamados modulo-<id> que estén en el registry.
 import type { ModuloRegistry } from '@plataforma/contracts';
-import type { ClienteGitHub } from './github.js';
+import { ErrorGitHub, type ClienteGitHub } from './github.js';
 import {
   ajustesRepoDeseados,
   ambientesDeseados,
   aprobacionesRequeridas,
   debeAprovisionarse,
+  ETIQUETA_REVISION,
   NOMBRE_RULESET,
   RAMA_INICIAL,
   rulesetDeseado,
@@ -73,6 +74,17 @@ export async function reconciliarModulo(m: ModuloRegistry, ctx: Contexto): Promi
     // 3. Acceso del team de revisores (code owner de la plantilla).
     await gh.pedir('PUT', `/orgs/${org}/teams/${ctx.teamRevisores}/repos/${org}/${m.repo}`, { permission: 'push' });
     r.acciones.push(`team ${ctx.teamRevisores}: write`);
+
+    // 3b. Etiqueta de revisión simulada. No es un control: si falla, se informa y se sigue.
+    try {
+      if (!(await gh.buscar(`${repo}/labels/${ETIQUETA_REVISION.name}`))) {
+        await gh.pedir('POST', `${repo}/labels`, ETIQUETA_REVISION);
+        r.acciones.push(`etiqueta ${ETIQUETA_REVISION.name}`);
+      }
+    } catch (err) {
+      if (!(err instanceof ErrorGitHub)) throw err;
+      r.acciones.push(`etiqueta ${ETIQUETA_REVISION.name}: no se pudo crear (${err.status})`);
+    }
 
     // 4. main existe (con CODEOWNERS) antes de protegerla: después ni la App puede pushear a main.
     if (!(await gh.buscar(`${repo}/branches/main`))) {

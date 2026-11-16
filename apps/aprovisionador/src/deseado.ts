@@ -102,3 +102,6 @@ export function tagDePlantilla(plantilla: string, repoPlantilla: string): string
   if (!m || m[1] !== repoPlantilla) throw new Error(`plantilla no soportada: ${plantilla} (se espera ${repoPlantilla}@x.y.z)`);
   return `v${m[2]}`;
 }
+
+/** Etiqueta de las revisiones simuladas del MVP (ADR-064): la usan los PR de los módulos. */
+export const ETIQUETA_REVISION = { name: 'revision-simulada', color: 'FBCA04', description: 'Revision hecha por la cuenta simulada del MVP' };

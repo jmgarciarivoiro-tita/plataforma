@@ -16,6 +16,8 @@ export class GitHubFalso implements ClienteGitHub {
   politicas = new Map<string, string[]>();
   miembrosTeam = 1;
   codeql = new Map<string, string>();
+  etiquetas = new Set<string>();
+  fallarEtiquetas = false;
   fallarEn: string | null = null;
 
   constructor(private readonly org: string) {}
@@ -43,6 +45,15 @@ export class GitHubFalso implements ClienteGitHub {
     }
     if ((m = /^\/repos\/[^/]+\/([^/]+)\/contents\/(.+)$/.exec(ruta))) {
       if (!this.archivos.has(`${m[1]}:${m[2]}`)) throw new ErrorGitHub(404, metodo, ruta, 'Not Found');
+      return r({});
+    }
+    if ((m = /^\/repos\/[^/]+\/([^/]+)\/labels(?:\/(.+))?$/.exec(ruta))) {
+      if (this.fallarEtiquetas) throw new ErrorGitHub(403, metodo, ruta, 'Resource not accessible by integration');
+      if (metodo === 'POST') {
+        this.etiquetas.add(`${m[1]}:${(cuerpo as { name: string }).name}`);
+        return r({});
+      }
+      if (!this.etiquetas.has(`${m[1]}:${m[2] ?? ''}`)) throw new ErrorGitHub(404, metodo, ruta, 'Not Found');
       return r({});
     }
     if ((m = /^\/repos\/[^/]+\/([^/]+)\/code-scanning\/default-setup$/.exec(ruta))) {
