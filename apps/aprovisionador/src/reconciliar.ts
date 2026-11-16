@@ -80,14 +80,30 @@ export async function reconciliarModulo(m: ModuloRegistry, ctx: Contexto): Promi
       r.acciones.push('main inicializada');
     }
 
-    // 5. Ruleset del perfil de riesgo (crea o actualiza).
+    // 5. CodeQL con configuración por defecto (SEG-10). Necesita código en main: en un repo nuevo
+    //    queda pendiente hasta que se mergea el PR inicial (lo toma la corrida programada).
+    const tieneContenido = await gh.buscar(`${repo}/contents/modulo.yaml`);
+    let codeql = false;
+    if (tieneContenido) {
+      const ds = await gh.pedir<{ state: string }>('GET', `${repo}/code-scanning/default-setup`);
+      if (ds.state !== 'configured') {
+        await gh.pedir('PATCH', `${repo}/code-scanning/default-setup`, { state: 'configured', query_suite: 'default' });
+        r.acciones.push('CodeQL activado');
+      }
+      codeql = true;
+    } else {
+      r.acciones.push('CodeQL pendiente (main sin código)');
+    }
+
+    // 6. Ruleset del perfil de riesgo (crea o actualiza); exige CodeQL solo si está activo.
     const rulesets = await gh.pedir<{ id: number; name: string }[]>('GET', `${repo}/rulesets`);
     const existente = rulesets.find((x) => x.name === NOMBRE_RULESET);
-    if (existente) await gh.pedir('PUT', `${repo}/rulesets/${existente.id}`, rulesetDeseado(m.riesgo));
-    else await gh.pedir('POST', `${repo}/rulesets`, rulesetDeseado(m.riesgo));
-    r.acciones.push(`ruleset ${NOMBRE_RULESET} (${necesarias} aprobación/es)`);
+    const deseado = rulesetDeseado(m.riesgo, { codeql });
+    if (existente) await gh.pedir('PUT', `${repo}/rulesets/${existente.id}`, deseado);
+    else await gh.pedir('POST', `${repo}/rulesets`, deseado);
+    r.acciones.push(`ruleset ${NOMBRE_RULESET} (${necesarias} aprobación/es${codeql ? ', CodeQL' : ''})`);
 
-    // 6. Environments con revisores y despliegue solo desde main.
+    // 7. Environments con revisores y despliegue solo desde main.
     for (const amb of ambientesDeseados(m, ctx.teamRevisores)) {
       const reviewers = await Promise.all(amb.revisores.map((rev) => idRevisor(gh, org, rev)));
       await gh.pedir('PUT', `${repo}/environments/${amb.nombre}`, {
@@ -102,8 +118,7 @@ export async function reconciliarModulo(m: ModuloRegistry, ctx: Contexto): Promi
       r.acciones.push(`environment ${amb.nombre}`);
     }
 
-    // 7. Contenido inicial por PR (nunca directo a main), solo si el repo todavía no lo tiene.
-    const tieneContenido = await gh.buscar(`${repo}/contents/modulo.yaml`);
+    // 8. Contenido inicial por PR (nunca directo a main), solo si el repo todavía no lo tiene.
     const ramaPendiente = await gh.buscar(`${repo}/branches/${encodeURIComponent(RAMA_INICIAL)}`);
     if (!tieneContenido && !ramaPendiente) {
       await ctx.git.publicarContenido(m.repo, m, tag);

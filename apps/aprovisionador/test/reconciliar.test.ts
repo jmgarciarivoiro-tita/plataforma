@@ -135,6 +135,41 @@ describe('reconciliarModulo', () => {
   });
 });
 
+describe('CodeQL (SEG-10)', () => {
+  const reglas = (gh: GitHubFalso) =>
+    (gh.llamadas.filter((l) => /\/rulesets(\/\d+)?$/.test(l.ruta) && l.metodo !== 'GET').at(-1)?.cuerpo as { rules: { type: string; parameters?: unknown }[] }).rules;
+
+  it('repo nuevo: CodeQL queda pendiente y el ruleset no lo exige (si no, bloquearía el PR inicial)', async () => {
+    const gh = new GitHubFalso(ORG);
+    const { ctx } = contexto(gh);
+    const r = await reconciliarModulo(modulo(), ctx);
+    expect(r.acciones).toContain('CodeQL pendiente (main sin código)');
+    expect(gh.rutas()).not.toContain(`PATCH /repos/${ORG}/modulo-notas/code-scanning/default-setup`);
+    expect(reglas(gh).map((x) => x.type)).not.toContain('code_scanning');
+  });
+
+  it('con código en main: activa CodeQL y el ruleset exige alertas por debajo de "alta"', async () => {
+    const gh = new GitHubFalso(ORG);
+    gh.repos.add('modulo-notas');
+    gh.ramas.add('modulo-notas:main');
+    gh.archivos.add('modulo-notas:modulo.yaml');
+    const { ctx } = contexto(gh);
+    const r = await reconciliarModulo(modulo(), ctx);
+    expect(r.acciones).toContain('CodeQL activado');
+    expect(gh.llamadas.find((l) => l.metodo === 'PATCH' && l.ruta.endsWith('/default-setup'))?.cuerpo).toEqual({ state: 'configured', query_suite: 'default' });
+    expect(reglas(gh).find((x) => x.type === 'code_scanning')?.parameters).toEqual({
+      code_scanning_tools: [{ tool: 'CodeQL', security_alerts_threshold: 'high_or_higher', alerts_threshold: 'errors' }],
+    });
+
+    // Segunda corrida: ya configurado, no lo vuelve a activar pero lo sigue exigiendo.
+    gh.llamadas = [];
+    const r2 = await reconciliarModulo(modulo(), ctx);
+    expect(r2.acciones).not.toContain('CodeQL activado');
+    expect(gh.rutas('PATCH')).not.toContain(`PATCH /repos/${ORG}/modulo-notas/code-scanning/default-setup`);
+    expect(reglas(gh).map((x) => x.type)).toContain('code_scanning');
+  });
+});
+
 describe('resumenMarkdown', () => {
   it('registry vacío y módulos omitidos', () => {
     expect(resumenMarkdown([])).toContain('No hay módulos');

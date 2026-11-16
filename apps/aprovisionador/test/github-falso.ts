@@ -15,6 +15,7 @@ export class GitHubFalso implements ClienteGitHub {
   rulesets = new Map<string, { id: number; name: string }[]>();
   politicas = new Map<string, string[]>();
   miembrosTeam = 1;
+  codeql = new Map<string, string>();
   fallarEn: string | null = null;
 
   constructor(private readonly org: string) {}
@@ -43,6 +44,10 @@ export class GitHubFalso implements ClienteGitHub {
     if ((m = /^\/repos\/[^/]+\/([^/]+)\/contents\/(.+)$/.exec(ruta))) {
       if (!this.archivos.has(`${m[1]}:${m[2]}`)) throw new ErrorGitHub(404, metodo, ruta, 'Not Found');
       return r({});
+    }
+    if ((m = /^\/repos\/[^/]+\/([^/]+)\/code-scanning\/default-setup$/.exec(ruta))) {
+      if (metodo === 'PATCH') this.codeql.set(m[1] ?? '', (cuerpo as { state: string }).state);
+      return r({ state: this.codeql.get(m[1] ?? '') ?? 'not-configured' });
     }
     if ((m = /^\/repos\/[^/]+\/([^/]+)\/rulesets$/.exec(ruta))) {
       const lista = this.rulesets.get(m[1] ?? '') ?? [];

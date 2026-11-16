@@ -1,5 +1,6 @@
 # Aprovisionamiento de repos de módulos (I2-3, ADR 0008).
-# Corre después del merge de un cambio en registry/ (ya aprobado por Sistemas) o a mano.
+# Corre después del merge de un cambio en registry/ (ya aprobado por Sistemas), a mano, y una vez por
+# día: activa CodeQL en los módulos cuyo PR inicial ya se mergeó y corrige desvíos (GOB-12).
 # La clave de la GitHub App está en el environment "aprovisionamiento", que solo acepta la rama main:
 # un PR no puede leerla.
 name: aprovisionamiento
@@ -7,6 +8,8 @@ on:
   push:
     branches: [main]
     paths: ['registry/**']
+  schedule:
+    - cron: '17 6 * * *' # 03:17 en Argentina
   workflow_dispatch:
     inputs:
       modulo:

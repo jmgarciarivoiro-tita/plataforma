@@ -10,7 +10,18 @@ export function aprobacionesRequeridas(riesgo: ModuloRegistry['riesgo']): number
   return riesgo === 'alto' ? 2 : 1;
 }
 
-export function rulesetDeseado(riesgo: ModuloRegistry['riesgo']) {
+/**
+ * SAST (SEG-10): bloquea el merge con alertas de CodeQL de severidad alta o mayor, o con errores.
+ * Solo se exige con CodeQL activo: si la herramienta no está configurada, GitHub bloquea todo merge.
+ */
+export const REGLA_CODEQL = {
+  type: 'code_scanning',
+  parameters: {
+    code_scanning_tools: [{ tool: 'CodeQL', security_alerts_threshold: 'high_or_higher', alerts_threshold: 'errors' }],
+  },
+};
+
+export function rulesetDeseado(riesgo: ModuloRegistry['riesgo'], o: { codeql: boolean } = { codeql: false }) {
   return {
     name: NOMBRE_RULESET,
     target: 'branch',
@@ -36,6 +47,7 @@ export function rulesetDeseado(riesgo: ModuloRegistry['riesgo']) {
         type: 'required_status_checks',
         parameters: { strict_required_status_checks_policy: true, required_status_checks: [{ context: 'resumen' }] },
       },
+      ...(o.codeql ? [REGLA_CODEQL] : []),
     ],
   };
 }

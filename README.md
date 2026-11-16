@@ -113,9 +113,10 @@ el workflow `aprovisionamiento` (ADR 0008):
 2. activa secret scanning, push protection y alertas de Dependabot;
 3. protege `main` con el ruleset del riesgo (1 aprobación; 2 en riesgo alto);
 4. crea los environments (`staging`, `aceptacion-negocio` en riesgo medio o alto, y `production`);
-5. abre un PR con la plantilla (`plantilla-modulo` en el tag de la versión del registry).
+5. abre un PR con la plantilla (`plantilla-modulo` en el tag de la versión del registry);
+6. cuando `main` ya tiene código, activa CodeQL y exige en el ruleset que no haya alertas altas.
 
-Es idempotente: se puede volver a correr desde *Actions → aprovisionamiento → Run workflow*.
+Es idempotente: corre también una vez por día y se puede lanzar desde *Actions → aprovisionamiento → Run workflow*.
 
 ## Políticas de los módulos (I3)
 
