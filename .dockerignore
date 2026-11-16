@@ -1,0 +1,20 @@
+# Contexto de build de las imágenes de plataforma (apps/api/Dockerfile hace COPY . .).
+# Dependencias y salidas: se generan dentro de la imagen.
+**/node_modules
+**/dist
+**/coverage
+**/.vite
+# Nunca en el contexto de build: secretos y configuración local (P7).
+.env
+.env.*
+**/.env
+**/.env.*
+infra/local/*.local.yaml
+**/secrets
+**/*.pem
+**/*.key
+# Repositorio y herramientas.
+.git
+.github
+docs
+*.patch
