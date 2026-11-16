@@ -39,6 +39,18 @@ de Sistemas. Hechos verificados en la documentación de GitHub:
   ruleset editado a mano). Nunca borra ni transfiere repos y solo toca repos `modulo-<id>` del registry.
 - El esquema del registry pasa a `@plataforma/contracts`, compartido por la API y el aprovisionador.
 
+## Actualización I3-3 — SAST con CodeQL (SEG-10)
+
+- El aprovisionador activa la **configuración por defecto de CodeQL** (`code-scanning/default-setup`,
+  permiso Administration, que la App ya tenía) y agrega al ruleset la regla `code_scanning`: bloquea
+  el merge con alertas de severidad **alta o mayor** o con errores. Sin cambios en la plantilla ni
+  permisos de escritura para la CI del módulo.
+- Orden obligatorio: CodeQL necesita código en `main` y la regla bloquea todo merge si la herramienta
+  no está configurada. Por eso en un repo nuevo queda **pendiente** hasta que se mergea el PR inicial,
+  y la regla se agrega recién con CodeQL activo.
+- El workflow corre además **una vez por día** (06:17 UTC): activa CodeQL en los módulos recién
+  completados y corrige cambios manuales de configuración (GOB-12).
+
 ## Consecuencias
 
 - Alta de un módulo = un PR al registry. El repo, su protección y el PR inicial salen solos.
