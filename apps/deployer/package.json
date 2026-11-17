@@ -1,0 +1,29 @@
+{
+  "name": "@plataforma/deployer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deployer local del MVP: despliega en Docker solo imágenes con atestación del pipeline gobernado (I4-2).",
+  "main": "dist/cli.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --coverage",
+    "start": "node --env-file-if-exists=../../infra/local/deployer.env dist/cli.js"
+  },
+  "dependencies": {
+    "@plataforma/contracts": "workspace:*",
+    "@plataforma/github": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@plataforma/config": "workspace:*",
+    "@types/node": "26.6.6",
+    "@vitest/coverage-v8": "5.1.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

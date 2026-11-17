@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@plataforma/contracts": "workspace:*",
+    "@plataforma/github": "workspace:*",
     "zod": "4.6.7"
   },
   "devDependencies": {

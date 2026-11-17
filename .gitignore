@@ -8,3 +8,7 @@ coverage/
 secrets/
 roles.local.yaml
 .DS_Store
+# Deployer local (I4-2): configuración, clave de la App y estado de despliegues
+infra/local/deployer.env
+infra/local/estado/
+*.pem

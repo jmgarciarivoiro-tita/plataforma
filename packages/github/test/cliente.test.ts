@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crearClienteGitHub, ErrorGitHub } from '../src/github.js';
+import { crearClienteGitHub, ErrorGitHub } from '../src/index.js';
 
 function fetchFalso(status: number, cuerpo: string, vistos: { url: string; init: RequestInit }[] = []): typeof fetch {
   return (async (url: string, init: RequestInit) => {
@@ -18,6 +18,16 @@ describe('cliente GitHub', () => {
     expect(h.authorization).toBe('Bearer tok');
     expect(h['x-github-api-version']).toBe('2022-11-28');
     expect(vistos[0]?.init.body).toBe('{"name":"x"}');
+  });
+
+  it('acepta una función que da el token (se pide en cada llamada)', async () => {
+    const vistos: { url: string; init: RequestInit }[] = [];
+    let n = 0;
+    const gh = crearClienteGitHub({ token: async () => `t${++n}`, fetchFn: fetchFalso(200, '{}', vistos) });
+    await gh.pedir('GET', '/a');
+    await gh.pedir('DELETE', '/b');
+    expect(vistos.map((v) => (v.init.headers as Record<string, string>).authorization)).toEqual(['Bearer t1', 'Bearer t2']);
+    expect(vistos[1]?.init.method).toBe('DELETE');
   });
 
   it('respuesta vacía (204) → null', async () => {

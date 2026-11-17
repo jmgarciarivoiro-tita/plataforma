@@ -1,7 +1,9 @@
 # Workflow reutilizable de publicación de módulos (I4-1, ADR 0011).
 # Lo llama cada módulo FIJADO POR SHA, solo en push a main (código ya revisado y con los controles en
 # verde). Construye la imagen, la prueba, la publica en GHCR por digest y firma dos atestaciones:
-# procedencia (SLSA) y SBOM (SPDX). El deployer (I4-2) solo despliega digests con atestación válida.
+# procedencia (SLSA) y SBOM (SPDX). Al final pide el despliegue a staging (I4-2a, ADR 0012): crea un
+# deployment de GitHub con {imagen, digest}; el deployer lo ejecuta solo si la atestación es válida.
+# El llamador debe otorgar deployments: write (plantilla-modulo >= 0.5.0).
 name: modulo-publicar
 on:
   workflow_call:
@@ -26,6 +28,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
+      deployments: write
     outputs:
       imagen: ${{ steps.nombre.outputs.imagen }}
       digest: ${{ steps.publicar.outputs.digest }}
@@ -112,10 +115,30 @@ jobs:
           sbom-path: sbom.spdx.json
           push-to-registry: true
 
+      # 4. Pedido de despliegue a staging. Lo crea GITHUB_TOKEN, así el creador es github-actions[bot]:
+      #    el deployer rechaza pedidos creados por personas (ADR 0012).
+      - name: Pedir despliegue a staging
+        id: pedido
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGEN: ${{ steps.nombre.outputs.imagen }}
+          DIGEST: ${{ steps.publicar.outputs.digest }}
+        run: |
+          set -euo pipefail
+          jq -n --arg ref "$GITHUB_SHA" --arg imagen "$IMAGEN" --arg digest "$DIGEST" '{
+            ref: $ref, environment: "staging", auto_merge: false, required_contexts: [],
+            production_environment: false, description: "Publicado por modulo-publicar",
+            payload: {imagen: $imagen, digest: $digest}
+          }' > pedido.json
+          id=$(gh api "repos/$GITHUB_REPOSITORY/deployments" --method POST --input pedido.json --jq .id)
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "Pedido de despliegue a staging: #$id"
+
       - name: Resumen
         env:
           IMAGEN: ${{ steps.nombre.outputs.imagen }}
           DIGEST: ${{ steps.publicar.outputs.digest }}
+          PEDIDO: ${{ steps.pedido.outputs.id }}
         run: |
           {
             echo "## Imagen publicada"
@@ -123,6 +146,7 @@ jobs:
             echo "- Imagen: \`$IMAGEN@$DIGEST\`"
             echo "- Commit: \`$GITHUB_SHA\`"
             echo "- Atestaciones: procedencia y SBOM (SPDX)"
+            echo "- Pedido de despliegue a staging: #$PEDIDO (lo ejecuta el deployer)"
             echo ""
             echo "Verificar: \`gh attestation verify oci://$IMAGEN@$DIGEST --owner $GITHUB_REPOSITORY_OWNER\`"
           } >> "$GITHUB_STEP_SUMMARY"
