@@ -37,6 +37,8 @@ const esquema = z
 
     // Gateway (I1-4): `id=http://host:puerto,...`. Vacío: ningún módulo montado.
     GATEWAY_MODULOS: z.string().default(''),
+    // I4-2b: mapa que escribe el deployer (infra/local/estado/despliegues.<entorno>.json). Se relee en caliente.
+    GATEWAY_MAPA_PATH: opcional(z.string().min(1)),
     GATEWAY_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(30_000),
 
     // Shell y registry (I1-5). Rutas relativas a apps/api (donde corre `pnpm dev`).

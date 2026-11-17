@@ -10,6 +10,7 @@ import type { ProveedorRoles } from './auth/roles.js';
 import type { AlmacenSesiones } from './auth/sesiones.js';
 import { authHabilitada, cookiesSeguras, type Config } from './config.js';
 import { registrarGateway } from './gateway/rutas.js';
+import { ModulosDesplegados } from './gateway/despliegues.js';
 import type { MapaModulos } from './gateway/modulos.js';
 import { enviarProblema } from './http/problema.js';
 import type { ModuloRegistry } from './registry/registry.js';
@@ -28,7 +29,7 @@ export interface OpcionesApp {
   emisor?: EmisorJwt;
   /** Roles de los usuarios (o una fábrica que recibe el logger). Sin proveedor, nadie tiene roles. */
   roles?: ProveedorRoles | ((log: FastifyBaseLogger) => ProveedorRoles);
-  /** Módulos montados en /m/<id> (requiere emisor). */
+  /** Módulos montados en /m/<id> (requiere emisor). Con el mapa del deployer, el gateway queda siempre activo. */
   modulos?: MapaModulos;
   /** Registry de módulos y carpeta del build del Shell. Sin registry no se publica el Shell. */
   shell?: { registry: ModuloRegistry[]; dir: string };
@@ -106,7 +107,7 @@ export function construirApp({ config, chequeos = [], auth, emisor, roles: roles
     );
   }
 
-  if (emisor && modulos && modulos.size > 0) {
+  if (emisor && modulos && (modulos instanceof ModulosDesplegados || modulos.size > 0)) {
     app.register(async (scope) =>
       registrarGateway(scope, { modulos, emisor, roles, timeoutMs: config.GATEWAY_TIMEOUT_MS }),
     );

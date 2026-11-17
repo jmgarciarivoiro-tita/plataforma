@@ -10,7 +10,11 @@ import type { ProveedorIdentidad } from '../src/auth/proveedor.js';
 import { parsearRoles, SIN_ROLES, type ProveedorRoles } from '../src/auth/roles.js';
 import { AlmacenSesionesMemoria } from '../src/auth/sesiones.js';
 import { cargarConfig } from '../src/config.js';
-import { parsearModulos } from '../src/gateway/modulos.js';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { ModulosDesplegados } from '../src/gateway/despliegues.js';
+import { parsearModulos, type MapaModulos } from '../src/gateway/modulos.js';
 
 interface Recibido {
   url: string;
@@ -59,7 +63,7 @@ usuarios:
 `);
 const roles: ProveedorRoles = { obtenerRoles: async (u) => mapaRoles.get(u.email ?? '') ?? SIN_ROLES };
 
-function crear(email = 'ana@ejemplo.test', modulos = `modulo-ejemplo=${upstreamUrl},caido=http://127.0.0.1:1`) {
+function crear(email = 'ana@ejemplo.test', modulos: string | MapaModulos = `modulo-ejemplo=${upstreamUrl},caido=http://127.0.0.1:1`) {
   const proveedor: ProveedorIdentidad = {
     urlLogin: async () => new URL('https://idp.test/auth'),
     completarLogin: async () => ({ sub: 'google-123', email, emailVerificado: true, nombre: 'Ana', dominio: null }),
@@ -75,7 +79,7 @@ function crear(email = 'ana@ejemplo.test', modulos = `modulo-ejemplo=${upstreamU
     config,
     emisor,
     roles,
-    modulos: parsearModulos(modulos),
+    modulos: typeof modulos === 'string' ? parsearModulos(modulos) : modulos,
     auth: { proveedor, sesiones: new AlmacenSesionesMemoria({ ttlMs: 60_000 }) },
   });
 }
@@ -208,5 +212,18 @@ describe('gateway /m/<id>', () => {
     const cookie = await sesion();
     const res = await app.inject({ method: 'GET', url: '/m/modulo-ejemplo/', cookies: { plat_sesion: cookie } });
     expect(res.statusCode).toBe(404);
+  });
+
+  it('I4-2b: monta un módulo desplegado sin reiniciar la API cuando el deployer escribe el mapa', async () => {
+    const ruta = join(mkdtempSync(join(tmpdir(), 'mapa-gw-')), 'despliegues.staging.json');
+    crear('ana@ejemplo.test', new ModulosDesplegados(new Map(), ruta));
+    const cookie = await sesion();
+    const antes = await app.inject({ method: 'GET', url: '/m/modulo-ejemplo/api/v1/yo', cookies: { plat_sesion: cookie } });
+    expect(antes.statusCode).toBe(404);
+
+    writeFileSync(ruta, JSON.stringify({ modulos: { 'modulo-ejemplo': { url: upstreamUrl, digest: `sha256:${'a'.repeat(64)}`, pedido: 1 } } }));
+    const despues = await app.inject({ method: 'GET', url: '/m/modulo-ejemplo/api/v1/yo', cookies: { plat_sesion: cookie } });
+    expect(despues.statusCode).toBe(200);
+    expect(recibidos).toHaveLength(1);
   });
 });

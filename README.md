@@ -163,3 +163,6 @@ Solo acepta pedidos del workflow, de la imagen del propio módulo, por digest y 
 1. Copiar `infra/local/deployer.env.example` a `infra/local/deployer.env` y completarlo.
 2. `pnpm --filter @plataforma/deployer build && pnpm --filter @plataforma/deployer start`
 3. Cada módulo publicado queda en `http://127.0.0.1:<puerto>`; el mapa está en `infra/local/estado/`.
+
+Con `GATEWAY_MAPA_PATH` en el `.env`, la API monta esos módulos en `/m/<id>/` y los relee en caliente,
+sin reiniciar (ADR 0013). El Shell los muestra a quien tenga rol en el módulo.
