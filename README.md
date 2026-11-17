@@ -154,3 +154,12 @@ pueden crear repos en organizaciones, y el aprovisionamiento de módulos (I2) lo
 
 Ver `AGENTS.md` (aplica a personas y a agentes de IA). Una historia por PR, tests primero,
 `pnpm verify` en verde y aprobación de Sistemas.
+
+## Deployer de staging (I4-2a)
+
+`apps/deployer` despliega en el Docker local las imágenes que publica `modulo-publicar` (ADR 0012).
+Solo acepta pedidos del workflow, de la imagen del propio módulo, por digest y con atestación válida.
+
+1. Copiar `infra/local/deployer.env.example` a `infra/local/deployer.env` y completarlo.
+2. `pnpm --filter @plataforma/deployer build && pnpm --filter @plataforma/deployer start`
+3. Cada módulo publicado queda en `http://127.0.0.1:<puerto>`; el mapa está en `infra/local/estado/`.
