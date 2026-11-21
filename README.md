@@ -164,5 +164,14 @@ Solo acepta pedidos del workflow, de la imagen del propio módulo, por digest y 
 2. `pnpm --filter @plataforma/deployer build && pnpm --filter @plataforma/deployer start`
 3. Cada módulo publicado queda en `http://127.0.0.1:<puerto>`; el mapa está en `infra/local/estado/`.
 
+### Producción (I4-3)
+
+El módulo dispara **Actions → promover** con el digest que está en staging. GitHub pide las aprobaciones
+según el riesgo (PO en `aceptacion-negocio` para medio/alto; Sistemas en `production`) y recién entonces se
+crea el pedido. El deployer de producción verifica las aprobaciones por API (ADR 0014):
+
+1. Copiar `infra/local/deployer.production.env.example` a `infra/local/deployer.production.env`.
+2. `pnpm --filter @plataforma/deployer start:production`
+
 Con `GATEWAY_MAPA_PATH` en el `.env`, la API monta esos módulos en `/m/<id>/` y los relee en caliente,
 sin reiniciar (ADR 0013). El Shell los muestra a quien tenga rol en el módulo.

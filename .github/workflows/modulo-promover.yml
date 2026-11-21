@@ -1,0 +1,116 @@
+# Workflow reutilizable de promoción a producción (I4-3, ADR 0014).
+# Lo llama cada módulo FIJADO POR SHA desde un workflow_dispatch sobre main, con el digest que ya está
+# sano en staging. GitHub frena los jobs en los environments protegidos hasta que aprueben otras
+# personas: aceptacion-negocio (PO, riesgo medio/alto) y production (team sistemas, sin autoaprobación).
+# Recién entonces se crea el pedido. El deployer de producción vuelve a verificar todo por API.
+name: modulo-promover
+on:
+  workflow_call:
+    inputs:
+      digest:
+        description: Digest sha256 de la imagen a promover (el que está en staging)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  preparar:
+    name: preparar (riesgo y staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      deployments: read
+    outputs:
+      riesgo: ${{ steps.riesgo.outputs.riesgo }}
+      imagen: ${{ steps.staging.outputs.imagen }}
+    steps:
+      - name: Solo desde main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::la promoción a producción solo se dispara desde main"
+          exit 1
+
+      - name: Registry vigente (main de la plataforma)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: main
+          path: .plataforma-datos
+          sparse-checkout: registry
+          persist-credentials: false
+
+      - name: Riesgo del módulo
+        id: riesgo
+        env:
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+          riesgo=$(yq -r 'select(.repo == strenv(REPO)) | .riesgo' .plataforma-datos/registry/*.yaml | grep -v '^---$' | head -1)
+          case "$riesgo" in bajo|medio|alto) ;; *) echo "::error::el repo $REPO no está en el registry"; exit 1 ;; esac
+          echo "riesgo=$riesgo" >> "$GITHUB_OUTPUT"
+          echo "Riesgo del módulo: $riesgo"
+
+      # Aviso temprano para no pedir aprobaciones en vano. El control real lo hace el deployer.
+      - name: El digest estuvo sano en staging
+        id: staging
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIGEST: ${{ inputs.digest }}
+        run: |
+          set -euo pipefail
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::digest inválido: $DIGEST"; exit 1; }
+          ids=$(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=staging&task=deploy:plataforma&per_page=30" \
+            --jq ".[] | select(.payload.digest == \"$DIGEST\") | .id")
+          ok=no
+          for id in $ids; do
+            if gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses?per_page=20" --jq '.[].state' | grep -qx success; then ok=yes; break; fi
+          done
+          [ "$ok" = yes ] || { echo "::error::$DIGEST no tiene un despliegue exitoso en staging"; exit 1; }
+          echo "imagen=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+  negocio:
+    name: aceptación de negocio (PO)
+    needs: preparar
+    if: needs.preparar.outputs.riesgo != 'bajo'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: aceptacion-negocio
+    steps:
+      - env:
+          DIGEST: ${{ inputs.digest }}
+        run: echo "Aceptación de negocio aprobada para $DIGEST"
+
+  produccion:
+    # El deployer busca este nombre para comprobar que el pedido se creó dentro de este job.
+    name: producción (pedido de despliegue)
+    needs: [preparar, negocio]
+    if: ${{ !cancelled() && needs.preparar.result == 'success' && (needs.negocio.result == 'success' || needs.negocio.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Pedir despliegue a producción
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGEN: ${{ needs.preparar.outputs.imagen }}
+          DIGEST: ${{ inputs.digest }}
+        run: |
+          set -euo pipefail
+          jq -n --arg ref "$GITHUB_SHA" --arg imagen "$IMAGEN" --arg digest "$DIGEST" --argjson run "$GITHUB_RUN_ID" '{
+            ref: $ref, environment: "production", task: "deploy:plataforma", auto_merge: false, required_contexts: [],
+            production_environment: true, description: "Promoción aprobada (modulo-promover)",
+            payload: {imagen: $imagen, digest: $digest, run_id: $run}
+          }' > pedido.json
+          id=$(gh api "repos/$GITHUB_REPOSITORY/deployments" --method POST --input pedido.json --jq .id)
+          {
+            echo "## Promoción a producción"
+            echo ""
+            echo "- Imagen: \`$IMAGEN@$DIGEST\`"
+            echo "- Pedido de despliegue: #$id (lo ejecuta el deployer de producción tras verificar las aprobaciones)"
+          } >> "$GITHUB_STEP_SUMMARY"

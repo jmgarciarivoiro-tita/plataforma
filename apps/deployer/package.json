@@ -12,7 +12,8 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --coverage",
-    "start": "node --env-file-if-exists=../../infra/local/deployer.env dist/cli.js"
+    "start": "node --env-file-if-exists=../../infra/local/deployer.env dist/cli.js",
+    "start:production": "node --env-file-if-exists=../../infra/local/deployer.production.env dist/cli.js"
   },
   "dependencies": {
     "@plataforma/contracts": "workspace:*",

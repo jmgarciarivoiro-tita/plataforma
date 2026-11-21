@@ -1,10 +1,11 @@
 // Un ciclo del deployer para un módulo y un entorno: toma el pedido pendiente más nuevo, lo valida,
-// verifica la atestación, levanta la versión nueva y recién retira la anterior si la nueva está sana.
+// en producción verifica las aprobaciones (I4-3), verifica la atestación, levanta la versión nueva y recién retira la anterior si la nueva está sana.
 // Cualquier rechazo o falla deja la versión anterior funcionando.
 import type { ModuloRegistry } from '@plataforma/contracts';
 import type { ClienteGitHub } from '@plataforma/github';
+import { verificarPromocion, type Promocion } from './promocion.js';
 import type { Docker, Entorno, Mapa, Pedido, Salud, VerificadorAtestacion } from './tipos.js';
-import { descripcion, nombreContenedor, puertoLibre, validarPedido } from './verificacion.js';
+import { descripcion, nombreContenedor, puertoLibre, TAREA, validarPedido } from './verificacion.js';
 
 export interface Contexto {
   org: string;
@@ -41,8 +42,10 @@ interface DeploymentApi {
   created_at: string;
 }
 
+// Solo pedidos con la tarea de la plataforma: GitHub crea además un deployment propio por cada job que usa
+// un environment (por ejemplo, el job aprobado de modulo-promover), y esos no son pedidos.
 async function pedidosPendientes(ctx: Contexto, repo: string): Promise<Pedido[]> {
-  const deps = await ctx.gh.pedir<DeploymentApi[]>('GET', `/repos/${ctx.org}/${repo}/deployments?environment=${ctx.entorno}&per_page=10`);
+  const deps = await ctx.gh.pedir<DeploymentApi[]>('GET', `/repos/${ctx.org}/${repo}/deployments?environment=${ctx.entorno}&task=${TAREA}&per_page=10`);
   const pendientes: Pedido[] = [];
   for (const d of deps) {
     const estados = await ctx.gh.pedir<{ state: string }[]>('GET', `/repos/${ctx.org}/${repo}/deployments/${d.id}/statuses?per_page=1`);
@@ -75,9 +78,13 @@ export async function procesarModulo(m: ModuloRegistry, ctx: Contexto): Promise<
   await informar(ctx, repo, pedido.id, 'in_progress', 'Verificando el pedido y la atestación');
 
   // 1. Validación del pedido y de la procedencia de la imagen (antes de tocar Docker).
-  let destino: { imagen: string; digest: string };
+  let destino: { imagen: string; digest: string; run?: number };
+  let promocion: Promocion | undefined;
   try {
     destino = validarPedido(pedido, { org: ctx.org, repo, entorno: ctx.entorno });
+    if (destino.run !== undefined) {
+      promocion = await verificarPromocion({ gh: ctx.gh, org: ctx.org, modulo: m, pedido: pedido.id, creado: pedido.creado, digest: destino.digest, run: destino.run });
+    }
     await ctx.atestacion.verificar(destino.imagen, destino.digest, `${ctx.org}/${repo}`);
   } catch (err) {
     const motivo = (err as Error).message;
@@ -118,10 +125,18 @@ export async function procesarModulo(m: ModuloRegistry, ctx: Contexto): Promise<
     }
 
     // 3. Corte: la versión nueva queda publicada en el mapa y se retiran las anteriores del módulo.
-    await ctx.mapa.escribir(m.id, { url: `http://127.0.0.1:${puerto}`, digest: destino.digest, pedido: pedido.id, desplegado: (ctx.ahora?.() ?? new Date()).toISOString() });
+    await ctx.mapa.escribir(m.id, {
+      url: `http://127.0.0.1:${puerto}`,
+      digest: destino.digest,
+      pedido: pedido.id,
+      desplegado: (ctx.ahora?.() ?? new Date()).toISOString(),
+      ...(promocion ? { aprobadoPor: promocion.aprobadores, run: promocion.run } : {}),
+    });
     for (const c of existentes) if (c.modulo === m.id && c.nombre !== nombre) await ctx.docker.eliminar(c.nombre);
-    await informar(ctx, repo, pedido.id, 'success', `Desplegado ${destino.digest.slice(0, 19)} en el puerto ${puerto}`);
-    ctx.log(`${m.id} #${pedido.id}: desplegado ${destino.digest} en ${puerto}`);
+    // Evidencia en GitHub (SOX): quién pidió, quién aprobó y en qué run.
+    const evidencia = promocion ? `; pidió ${promocion.solicitante}, aprobó ${promocion.aprobadores.join(', ')} (run ${promocion.run})` : '';
+    await informar(ctx, repo, pedido.id, 'success', `Desplegado ${destino.digest.slice(0, 19)} en el puerto ${puerto}${evidencia}`);
+    ctx.log(`${m.id} #${pedido.id}: desplegado ${destino.digest} en ${puerto}${evidencia}`);
     return { modulo: m.id, estado: 'desplegado', pedido: pedido.id };
   } catch (err) {
     const motivo = (err as Error).message;

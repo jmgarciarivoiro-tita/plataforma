@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { modulosDesplegables, procesarModulo, type Contexto } from '../src/ciclo.js';
 import { AtestacionFalsa, DIGEST_A, DIGEST_B, DockerFalso, GitHubFalso, MapaFalso, ORG, modulo, saludFalsa, type DeploymentFalso } from './falsos.js';
 
-function contexto(deps: DeploymentFalso[], o: { atestacion?: AtestacionFalsa; salud?: boolean; docker?: DockerFalso } = {}) {
+function contexto(deps: DeploymentFalso[], o: { atestacion?: AtestacionFalsa; salud?: boolean; docker?: DockerFalso; entorno?: 'staging' | 'production' } = {}) {
   const gh = new GitHubFalso(deps);
   const docker = o.docker ?? new DockerFalso();
   const mapa = new MapaFalso();
   const atestacion = o.atestacion ?? new AtestacionFalsa();
   const logs: string[] = [];
   const ctx: Contexto = {
-    org: ORG, entorno: 'staging', gh, docker, atestacion, salud: saludFalsa(o.salud ?? true), mapa,
+    org: ORG, entorno: o.entorno ?? 'staging', gh, docker, atestacion, salud: saludFalsa(o.salud ?? true), mapa,
     rangoPuertos: [4100, 4199], envModulo: { PLATFORM_JWKS_URL: 'http://host.docker.internal:8080/.well-known/jwks.json', PLATFORM_ISSUER: 'http://localhost:8080' },
     log: (m) => logs.push(m), ahora: () => new Date('2026-11-17T12:00:00Z'),
   };
@@ -55,7 +55,7 @@ describe('procesarModulo', () => {
   });
 
   it.each([
-    ['creado por una persona y no por el workflow', { creador: 'alguien' }, 'solo se aceptan pedidos del workflow de publicación'],
+    ['creado por una persona y no por el workflow', { creador: 'alguien' }, 'solo se aceptan pedidos de los workflows de la plataforma'],
     ['con la imagen de otro módulo', { payload: { imagen: `ghcr.io/${ORG}/modulo-otro`, digest: DIGEST_A } }, 'no es la del módulo'],
     ['con un tag en lugar de digest', { payload: { imagen: `ghcr.io/${ORG}/modulo-notas`, digest: 'latest' } }, 'digest inválido'],
     ['sin payload', { payload: '' }, 'no es la del módulo'],
