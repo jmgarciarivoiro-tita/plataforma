@@ -42,7 +42,9 @@ puerto a internet. Hechos verificados:
 
 - Riesgo aceptado para el MVP: el deployer usa el socket de Docker de la PC (equivale a root local). Se
   mitiga corriéndolo solo en la PC de Sistemas y solo con imágenes atestadas.
-- El gateway todavía usa `GATEWAY_MODULOS`; leer el mapa en caliente es I4-2b.
+- El gateway lee el mapa en caliente desde I4-2b (ADR 0013).
+- La org bloquea los paquetes públicos por defecto: se habilitó *Public* en Settings → Packages →
+  *Package creation*, y cada paquete nuevo se hace público una vez, a mano (verificado en I4-2a).
 - Requiere `gh` y `docker` en el PATH de la PC.
 - Con paquetes privados (empresa real) habrá que resolver la credencial de lectura de GHCR (PAT de
   máquina o registro alternativo); queda para la fase corporativa.
