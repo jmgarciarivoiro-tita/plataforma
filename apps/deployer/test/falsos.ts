@@ -25,15 +25,47 @@ export interface DeploymentFalso {
   estados?: string[];
 }
 
+export interface RunFalso {
+  event?: string;
+  head_branch?: string;
+  status?: string;
+  conclusion?: string | null;
+  actor?: string;
+  triggering_actor?: string;
+  referenced_workflows?: { path: string }[];
+  aprobaciones?: { state: string; user: string; environments: string[] }[];
+  jobs?: { name: string; started_at: string | null; completed_at: string | null }[];
+}
+
 export class GitHubFalso implements ClienteGitHub {
   llamadas: { metodo: Metodo; ruta: string; cuerpo?: unknown }[] = [];
+  runs: Record<number, RunFalso> = {};
   constructor(public deployments: DeploymentFalso[]) {}
   async pedir<T>(metodo: Metodo, ruta: string, cuerpo?: unknown): Promise<T> {
     this.llamadas.push({ metodo, ruta, ...(cuerpo === undefined ? {} : { cuerpo }) });
     const r = (x: unknown) => x as T;
     let m: RegExpExecArray | null;
-    if (/\/deployments\?environment=/.test(ruta)) {
-      return r(this.deployments.map((d) => ({ id: d.id, sha: 'abc', environment: d.environment ?? 'staging', creator: { login: d.creador ?? 'github-actions[bot]' }, payload: d.payload ?? { imagen: `ghcr.io/${ORG}/modulo-notas`, digest: DIGEST_A }, created_at: d.created_at ?? `2026-11-17T10:00:0${d.id}Z` })));
+    if ((m = /\/actions\/runs\/(\d+)\/jobs/.exec(ruta))) {
+      const run = this.runs[Number(m[1])];
+      return r({ jobs: run?.jobs ?? [{ name: 'promover / producción (pedido de despliegue)', started_at: '2026-11-17T09:00:00Z', completed_at: null }] });
+    }
+    if ((m = /\/actions\/runs\/(\d+)(\/approvals)?$/.exec(ruta))) {
+      const run = this.runs[Number(m[1])];
+      if (!run) throw new Error('404 run');
+      if (m[2]) return r((run.aprobaciones ?? []).map((a) => ({ state: a.state, user: { login: a.user }, environments: a.environments.map((name) => ({ name })) })));
+      return r({
+        event: run.event ?? 'workflow_dispatch',
+        head_branch: run.head_branch ?? 'main',
+        status: run.status ?? 'in_progress',
+        conclusion: run.conclusion ?? null,
+        actor: { login: run.actor ?? 'autor' },
+        triggering_actor: { login: run.triggering_actor ?? run.actor ?? 'autor' },
+        referenced_workflows: run.referenced_workflows ?? [{ path: `${ORG}/plataforma/.github/workflows/modulo-promover.yml@abc` }],
+      });
+    }
+    if ((m = /\/deployments\?environment=([a-z-]+)&task=deploy:plataforma/.exec(ruta))) {
+      const env = m[1];
+      return r(this.deployments.filter((d) => (d.environment ?? 'staging') === env).map((d) => ({ id: d.id, sha: 'abc', environment: d.environment ?? 'staging', creator: { login: d.creador ?? 'github-actions[bot]' }, payload: d.payload ?? { imagen: `ghcr.io/${ORG}/modulo-notas`, digest: DIGEST_A }, created_at: d.created_at ?? `2026-11-17T10:00:0${d.id}Z` })));
     }
     if ((m = /\/deployments\/(\d+)\/statuses/.exec(ruta))) {
       const d = this.deployments.find((x) => x.id === Number(m?.[1]));
@@ -42,7 +74,8 @@ export class GitHubFalso implements ClienteGitHub {
         if (d && !d.estados) d.estados = [(cuerpo as { state: string }).state];
         return r({});
       }
-      return r((d?.estados ?? []).slice(0, 1).map((state) => ({ state })));
+      const limite = /per_page=1$/.test(ruta) ? 1 : 100;
+      return r((d?.estados ?? []).slice(0, limite).map((state) => ({ state })));
     }
     throw new Error(`ruta no simulada: ${metodo} ${ruta}`);
   }

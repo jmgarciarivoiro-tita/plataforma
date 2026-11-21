@@ -52,6 +52,9 @@ export interface EntradaMapa {
   digest: string;
   pedido: number;
   desplegado: string;
+  /** Producción: quién aprobó y en qué run (evidencia, I4-3). */
+  aprobadoPor?: string[];
+  run?: number;
 }
 
 export interface Mapa {

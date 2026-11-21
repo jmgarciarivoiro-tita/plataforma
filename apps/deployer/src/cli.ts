@@ -25,13 +25,6 @@ const c = z
   })
   .parse(process.env);
 
-// Producción exige verificar la aprobación humana del run y que el digest haya pasado por staging (I4-3).
-// Hasta entonces el deployer se niega a arrancar contra producción: un pedido del bot no alcanza.
-if (c.ENTORNO === 'production') {
-  process.stderr.write('ENTORNO=production todavía no está habilitado: requiere la verificación de aprobaciones de I4-3.\n');
-  process.exit(2);
-}
-
 const [desde, hasta] = c.PUERTOS.split('-').map(Number) as [number, number];
 const token = crearProveedorTokenApp({
   clientId: c.DEPLOYER_CLIENT_ID,

@@ -126,7 +126,7 @@ jobs:
         run: |
           set -euo pipefail
           jq -n --arg ref "$GITHUB_SHA" --arg imagen "$IMAGEN" --arg digest "$DIGEST" '{
-            ref: $ref, environment: "staging", auto_merge: false, required_contexts: [],
+            ref: $ref, environment: "staging", task: "deploy:plataforma", auto_merge: false, required_contexts: [],
             production_environment: false, description: "Publicado por modulo-publicar",
             payload: {imagen: $imagen, digest: $digest}
           }' > pedido.json

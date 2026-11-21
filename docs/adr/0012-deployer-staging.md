@@ -35,8 +35,8 @@ puerto a internet. Hechos verificados:
   aprovisionador. Cliente compartido en `packages/github`.
 - **Paquetes GHCR públicos** (repos públicos y datos sintéticos, P7): el deployer descarga sin
   credenciales. Cada paquete nuevo se hace público una vez, a mano.
-- **Producción deshabilitada** hasta I4-3: el deployer se niega a arrancar con `ENTORNO=production`,
-  porque un pedido del bot no prueba la aprobación humana.
+- **Producción** se habilitó en I4-3 con verificación de aprobaciones (ADR 0014). Desde entonces los
+  pedidos llevan `task: deploy:plataforma` y el deployer ignora cualquier otro deployment.
 
 ## Consecuencias
 
